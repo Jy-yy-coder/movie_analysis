@@ -33,5 +33,5 @@ venv/
 .venv/
 env/
 
-# 输出文件
-output/
+# 输出文件（Vercel 部署需要）
+# output/

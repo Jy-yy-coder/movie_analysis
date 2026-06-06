@@ -8,7 +8,6 @@ import numpy as np
 import os
 import glob
 import re
-import base64
 from collections import Counter
 from flask import Flask, render_template, jsonify, request, send_from_directory
 
@@ -218,20 +217,12 @@ def load_all_data():
     data['movie_by_id'] = {str(m['movie_id']): m for m in data['movies']}
     data['movie_by_name'] = {m['片名']: m for m in data['movies']}
 
-    # 2. 海报转为 base64 编码
+    # 2. 海报
     data['posters'] = {}
     if os.path.exists(POSTER_DIR):
         for f in os.listdir(POSTER_DIR):
             if f.endswith(('.jpg', '.png', '.webp')):
-                try:
-                    filepath = os.path.join(POSTER_DIR, f)
-                    with open(filepath, 'rb') as img_file:
-                        img_data = base64.b64encode(img_file.read()).decode('utf-8')
-                        ext = f.rsplit('.', 1)[1].lower()
-                        mime = 'image/jpeg' if ext == 'jpg' else f'image/{ext}'
-                        data['posters'][f.rsplit('.', 1)[0]] = f'data:{mime};base64,{img_data}'
-                except Exception as e:
-                    print(f'海报加载失败: {f}, 错误: {e}')
+                data['posters'][f.rsplit('.', 1)[0]] = f
 
     # 3. 评论数据
     data['comments'] = {}
