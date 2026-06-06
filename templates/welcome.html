@@ -409,8 +409,12 @@
                 const item = document.createElement('div');
                 item.className = 'carousel-item';
                 item.style.transform = 'rotateY(' + (angleStep * i) + 'deg) translateZ(' + radius + 'px)';
+                var posterSrc = m.海报 || '';
+                if (posterSrc && !posterSrc.startsWith('http')) {
+                    posterSrc = '/posters/' + encodeURIComponent(posterSrc);
+                }
                 item.innerHTML =
-                    '<img src="/posters/' + encodeURIComponent(m.海报 || '') + '" alt="' + m.片名 + '" loading="lazy">'
+                    '<img src="' + posterSrc + '" alt="' + m.片名 + '" loading="lazy">'
                     + '<div class="poster-overlay">' + m.片名 + '</div>'
                     + '<div class="poster-score">⭐ ' + m.豆瓣评分 + '</div>';
                 ring.appendChild(item);

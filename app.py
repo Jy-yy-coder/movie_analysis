@@ -42,6 +42,9 @@ ALL_KEYWORDS = list(dict.fromkeys(POS_KEYWORDS + NEG_KEYWORDS + [
     '3D', 'IMAX', '煽情', '反转', '结局', '开头', '高潮', '铺垫',
 ]))
 
+# ==================== GitHub 配置 ====================
+GITHUB_RAW_BASE = 'https://raw.githubusercontent.com/Jy-yy-coder/movie_analysis/main/data/raw/posters/'
+
 # ==================== 工具函数 ====================
 
 def safe_str(val):
@@ -76,15 +79,24 @@ def normalize_name(name):
 def find_poster(name, posters):
     if not posters:
         return None
+    filename = None
     if name in posters:
-        return posters[name]
-    norm = normalize_name(name)
-    for k in posters:
-        if normalize_name(k) == norm:
-            return posters[k]
-    for k in posters:
-        if name in k or k in name:
-            return posters[k]
+        filename = posters[name]
+    else:
+        norm = normalize_name(name)
+        for k in posters:
+            if normalize_name(k) == norm:
+                filename = posters[k]
+                break
+        if not filename:
+            for k in posters:
+                if name in k or k in name:
+                    filename = posters[k]
+                    break
+    # 返回 GitHub raw 链接
+    if filename:
+        from urllib.parse import quote
+        return GITHUB_RAW_BASE + quote(filename)
     return None
 
 
