@@ -33,7 +33,5 @@ venv/
 .venv/
 env/
 
-# 输出文件（保留分析CSV，排除大文件和图表）
-output/charts/
-output/sentiment_analysis_detail.csv
-output/negative_comments_with_topics.csv
+# 输出文件
+output/

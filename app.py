@@ -16,7 +16,7 @@ app = Flask(__name__)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CLEAN_DIR = os.path.join(BASE_DIR, 'data', 'cleaned')
 RAW_DIR = os.path.join(BASE_DIR, 'data', 'raw')
-POSTER_DIR = os.path.join(BASE_DIR, 'static', 'posters')
+POSTER_DIR = os.path.join(RAW_DIR, 'posters')
 
 # ==================== 关键词库 ====================
 
@@ -665,5 +665,3 @@ def api_analysis_data():
 if __name__ == '__main__':
     print('春节档电影观影决策平台启动中...')
     app.run(debug=False, host='0.0.0.0', port=5000)
-
-# Vercel部署触发更新
