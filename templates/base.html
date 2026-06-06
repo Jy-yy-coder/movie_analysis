@@ -64,9 +64,16 @@
                         }
                         results.innerHTML = data.map(m=>{
                             var bg = m.label_type==='success'?'#155724':m.label_type==='warning'?'#856404':'#8B0000';
+                            var posterHtml = '';
+                            if (m.海报) {
+                                var src = m.海报.startsWith('data:') ? m.海报 : '/posters/' + encodeURIComponent(m.海报);
+                                posterHtml = '<img src="' + src + '" alt="'+m.片名+'">';
+                            } else {
+                                posterHtml = '<div class="search-poster-placeholder">🎬</div>';
+                            }
                             return '<a href="/movie/'+m.movie_id+'" class="search-result-item">'
                                 +'<div class="search-result-poster">'
-                                +(m.海报 ? '<img src="/posters/'+encodeURIComponent(m.海报)+'" alt="'+m.片名+'">' : '<div class="search-poster-placeholder">🎬</div>')
+                                + posterHtml
                                 +'</div>'
                                 +'<div class="search-result-info">'
                                 +'<div class="search-result-title">'+m.片名+'</div>'
@@ -89,7 +96,11 @@
 
     // 工具函数
     function posterUrl(poster) {
-        return poster ? '/posters/' + encodeURIComponent(poster) : '';
+        if (!poster) return '';
+        // 如果已经是 base64 数据 URI，直接返回
+        if (poster.startsWith('data:')) return poster;
+        // 否则构造文件路径
+        return '/posters/' + encodeURIComponent(poster);
     }
     function starsHtml(score) {
         var full = Math.floor(score / 2);
