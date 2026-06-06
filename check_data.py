@@ -1,7 +1,9 @@
 import pandas as pd
 import os
 
-output_dir = r'd:\基础编程(运行灵码用的)\编程\movie_analysis\output'
+# 使用基于脚本位置的相对路径
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+output_dir = os.path.join(BASE_DIR, 'output')
 files = ['trend_analysis.csv', 'sentiment_analysis.csv', 'lda_topic_summary.csv', '高频词统计.csv', '口碑对比分析.csv']
 
 for f in files:

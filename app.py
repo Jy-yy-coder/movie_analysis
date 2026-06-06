@@ -339,6 +339,21 @@ def reputation_analysis():
     return render_template('reputation_analysis.html')
 
 
+@app.route('/compare')
+def movie_compare():
+    return render_template('movie_compare.html')
+
+
+@app.route('/negative')
+def negative_analysis():
+    return render_template('negative_analysis.html')
+
+
+@app.route('/yearly_compare')
+def yearly_compare():
+    return render_template('yearly_compare.html')
+
+
 # ==================== API ====================
 
 @app.route('/api/overview')
@@ -697,6 +712,66 @@ def api_analysis_data():
         return jsonify({'error': str(e)}), 500
     
     return jsonify(data)
+
+
+@app.route('/api/negative_topics')
+def api_negative_topics():
+    """获取负面评论主题分析数据"""
+    output_dir = os.path.join(BASE_DIR, 'output')
+    
+    # 读取主题摘要
+    topics = []
+    summary_file = os.path.join(output_dir, 'lda_topic_summary.csv')
+    keywords_file = os.path.join(output_dir, 'negative_topics.csv')
+    
+    if os.path.exists(summary_file) and os.path.exists(keywords_file):
+        summary_df = pd.read_csv(summary_file, encoding='utf-8-sig')
+        keywords_df = pd.read_csv(keywords_file, encoding='utf-8-sig')
+        
+        for _, row in summary_df.iterrows():
+            topic_id = row['主题编号']
+            topic_keywords = keywords_df[keywords_df['主题'] == topic_id]
+            keywords_list = [{'词': r['关键词'], '权重': float(r['权重'])} for _, r in topic_keywords.iterrows()]
+            
+            topics.append({
+                '主题编号': int(topic_id),
+                '主题名称': row['主题名称'],
+                '文档数': int(row['文档数']),
+                '占比': float(row['占比']),
+                '关键词': keywords_list
+            })
+    
+    # 读取电影-主题矩阵
+    matrix = []
+    detail_file = os.path.join(output_dir, 'negative_comments_with_topics.csv')
+    if os.path.exists(detail_file):
+        detail_df = pd.read_csv(detail_file, encoding='utf-8-sig')
+        
+        # 按电影和主题分组统计
+        movie_topic_counts = detail_df.groupby(['电影名称', '主题名称']).size().reset_index(name='count')
+        
+        # 获取每个电影的负面评论总数
+        movie_totals = detail_df.groupby('电影名称').size().reset_index(name='负面总数')
+        
+        # 构建矩阵数据
+        for movie_name in movie_totals['电影名称'].unique():
+            movie_data = movie_topic_counts[movie_topic_counts['电影名称'] == movie_name]
+            total = int(movie_totals[movie_totals['电影名称'] == movie_name]['负面总数'].values[0])
+            
+            topic_dist = {}
+            for _, row in movie_data.iterrows():
+                topic_dist[row['主题名称']] = int(row['count'])
+            
+            matrix.append({
+                '片名': movie_name,
+                '负面总数': total,
+                '主题分布': topic_dist
+            })
+    
+    return jsonify({
+        'topics': topics,
+        'movie_topic_matrix': matrix
+    })
 
 
 if __name__ == '__main__':

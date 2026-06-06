@@ -240,10 +240,10 @@ fetch('/api/movie/' + movieId).then(r => {
         if (!reviews.length) { el.innerHTML = '<p class="text-muted">暂无数据</p>'; return; }
         el.innerHTML = reviews.map(r => `
             <div class="review-card ${isNeg?'negative':''}">
-                <div class="review-user">${r.用户昵称 || '匿名'}
+                <div class="review-user">${escapeHtml(r.用户昵称) || '匿名'}
                     <span style="color:${r.用户评分>=4?'#155724':r.用户评分>=3?'#DAA520':'#8B0000'}">${'★'.repeat(r.用户评分)}${'☆'.repeat(5-r.用户评分)}</span>
                 </div>
-                <div class="review-text">${r.评论内容}</div>
+                <div class="review-text">${escapeHtml(r.评论内容)}</div>
                 <div class="review-meta"><i class="bi bi-hand-thumbs-up-fill"></i> ${r.点赞数} · ${r.评论时间}</div>
             </div>`).join('');
     }

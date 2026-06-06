@@ -70,11 +70,11 @@
                             }
                             return '<a href="/movie/'+m.movie_id+'" class="search-result-item">'
                                 +'<div class="search-result-poster">'
-                                +(posterSrc ? '<img src="'+posterSrc+'" alt="'+m.片名+'">' : '<div class="search-poster-placeholder">🎬</div>')
+                                +(posterSrc ? '<img src="'+posterSrc+'" alt="'+escapeHtml(m.片名)+'">' : '<div class="search-poster-placeholder">🎬</div>')
                                 +'</div>'
                                 +'<div class="search-result-info">'
-                                +'<div class="search-result-title">'+m.片名+'</div>'
-                                +'<div class="search-result-meta">'+m.年份+'年 · '+m.导演.split('/')[0].trim()+'</div>'
+                                +'<div class="search-result-title">'+escapeHtml(m.片名)+'</div>'
+                                +'<div class="search-result-meta">'+m.年份+'年 · '+escapeHtml(m.导演.split('/')[0].trim())+'</div>'
                                 +'</div>'
                                 +'<div class="search-result-score" style="background:'+bg+'">'+m.豆瓣评分+'</div>'
                                 +'</a>';
@@ -92,6 +92,16 @@
     })();
 
     // 工具函数
+    // XSS 防护：HTML 转义
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
     function posterUrl(poster) {
         if (!poster) return '';
         // 如果已经是完整 URL（如 GitHub raw 链接），直接返回

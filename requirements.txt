@@ -15,6 +15,10 @@ numpy==2.1.3
 jieba==0.42.1
 snownlp==0.12.3
 
+# 机器学习（LDA主题建模）
+scikit-learn==1.5.2
+gensim==4.3.3
+
 # 可视化
 matplotlib==3.9.4
 seaborn==0.13.2

@@ -10,8 +10,14 @@ function getGuestId() {
 
 // ===== 点赞功能 =====
 function getLikedMovies() {
-    const liked = localStorage.getItem('likedMovies');
-    return liked ? JSON.parse(liked) : [];
+    try {
+        const liked = localStorage.getItem('likedMovies');
+        return liked ? JSON.parse(liked) : [];
+    } catch (e) {
+        console.warn('解析 likedMovies 失败，重置为空数组:', e);
+        localStorage.removeItem('likedMovies');
+        return [];
+    }
 }
 
 function toggleLike(movieId) {
@@ -53,8 +59,14 @@ function isLiked(movieId) {
 
 // ===== 收藏功能 =====
 function getCollectedMovies() {
-    const collected = localStorage.getItem('collectedMovies');
-    return collected ? JSON.parse(collected) : [];
+    try {
+        const collected = localStorage.getItem('collectedMovies');
+        return collected ? JSON.parse(collected) : [];
+    } catch (e) {
+        console.warn('解析 collectedMovies 失败，重置为空数组:', e);
+        localStorage.removeItem('collectedMovies');
+        return [];
+    }
 }
 
 function toggleCollect(movieId) {
