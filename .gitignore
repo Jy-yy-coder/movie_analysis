@@ -33,5 +33,8 @@ venv/
 .venv/
 env/
 
-# 输出文件
-output/
+# 输出文件（保留API需要的CSV）
+output/charts/
+output/*.png
+output/sentiment_analysis_detail.csv
+output/negative_comments_with_topics.csv
