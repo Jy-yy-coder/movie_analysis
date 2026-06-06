@@ -8,6 +8,7 @@ import numpy as np
 import os
 import glob
 import re
+import json
 from collections import Counter
 from flask import Flask, render_template, jsonify, request, send_from_directory, abort
 from werkzeug.utils import safe_join
@@ -352,6 +353,11 @@ def negative_analysis():
 @app.route('/yearly_compare')
 def yearly_compare():
     return render_template('yearly_compare.html')
+
+
+@app.route('/ai')
+def ai_recommend():
+    return render_template('ai_recommend.html')
 
 
 # ==================== API ====================
@@ -772,6 +778,121 @@ def api_negative_topics():
         'topics': topics,
         'movie_topic_matrix': matrix
     })
+
+
+# ==================== AI 推荐 API ====================
+
+# SenseNova API 配置
+SENSENOVA_API_KEY = os.environ.get('SENSENOVA_API_KEY', '')
+SENSENOVA_BASE_URL = 'https://token.sensenova.cn/v1'
+
+@app.route('/api/recommend', methods=['POST'])
+def api_recommend():
+    """AI 智能推荐电影"""
+    data = request.get_json()
+    user_mood = data.get('mood', '').strip()
+    
+    if not user_mood:
+        return jsonify({'error': '请输入你的心情或需求'}), 400
+    
+    if not SENSENOVA_API_KEY:
+        return jsonify({'error': 'AI 服务未配置，请设置 SENSENOVA_API_KEY 环境变量'}), 500
+    
+    # 获取电影数据
+    movies = DATA['movies']
+    movies_info = []
+    for m in movies:
+        label, lt = get_label(m['豆瓣评分'])
+        poster = find_poster(m['片名'], DATA['posters'])
+        movies_info.append({
+            '片名': m['片名'],
+            '年份': int(m['年份']),
+            '豆瓣评分': float(m['豆瓣评分']),
+            '导演': safe_str(m.get('导演', '')),
+            '主演': safe_str(m.get('主演', '')),
+            '类型': safe_str(m.get('类型', '')),
+            '剧情简介': safe_str(m.get('剧情简介', ''))[:200],
+            '海报': poster,
+            'label': label
+        })
+    
+    # 构建 prompt
+    system_prompt = """你是一个专业的电影推荐助手。用户会告诉你他们的心情、想法或需求，你需要从提供的春节档电影列表中推荐最合适的电影。
+
+请按以下格式返回 JSON：
+{
+  "summary": "对用户需求的理解和推荐总结（1-2句话）",
+  "recommendations": [
+    {
+      "片名": "电影名称",
+      "理由": "推荐理由（2-3句话，说明为什么这部电影适合用户当前的心情/需求）"
+    }
+  ]
+}
+
+规则：
+1. 只推荐列表中存在的电影
+2. 推荐 2-4 部最匹配的电影
+3. 理由要具体、有说服力
+4. 返回纯 JSON，不要包含其他文字"""
+
+    user_prompt = f"""用户需求：{user_mood}
+
+可选电影列表：
+{json.dumps(movies_info, ensure_ascii=False, indent=2)}"""
+    
+    try:
+        from openai import OpenAI
+        
+        client = OpenAI(
+            api_key=SENSENOVA_API_KEY,
+            base_url=SENSENOVA_BASE_URL
+        )
+        
+        response = client.chat.completions.create(
+            model='sensenova-6.7-flash-lite',
+            messages=[
+                {'role': 'system', 'content': system_prompt},
+                {'role': 'user', 'content': user_prompt}
+            ],
+            temperature=0.7,
+            max_tokens=1000
+        )
+        
+        ai_response = response.choices[0].message.content
+        
+        # 解析 JSON 响应
+        try:
+            # 尝试提取 JSON
+            json_match = re.search(r'\{[\s\S]*\}', ai_response)
+            if json_match:
+                result = json.loads(json_match.group())
+            else:
+                result = json.loads(ai_response)
+            
+            # 补充电影详细信息
+            for rec in result.get('recommendations', []):
+                movie_name = rec.get('片名', '')
+                for m in movies_info:
+                    if m['片名'] == movie_name:
+                        rec['年份'] = m['年份']
+                        rec['豆瓣评分'] = m['豆瓣评分']
+                        rec['导演'] = m['导演']
+                        rec['海报'] = m['海报']
+                        break
+            
+            return jsonify(result)
+            
+        except json.JSONDecodeError:
+            # JSON 解析失败，返回原始响应
+            return jsonify({
+                'summary': ai_response,
+                'recommendations': []
+            })
+    
+    except Exception as e:
+        print(f'AI 推荐错误: {e}')
+        return jsonify({'error': f'AI 服务调用失败: {str(e)}'}), 500
 
 
 if __name__ == '__main__':
