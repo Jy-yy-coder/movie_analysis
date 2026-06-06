@@ -12,6 +12,10 @@ import json
 from collections import Counter
 from flask import Flask, render_template, jsonify, request, send_from_directory, abort
 from werkzeug.utils import safe_join
+from dotenv import load_dotenv
+
+# 加载 .env 文件
+load_dotenv()
 
 app = Flask(__name__)
 
