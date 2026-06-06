@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% block title %}电影库 - 春节档观影决策平台{% endblock %}
+{% block content %}
+<div class="container py-3">
+    <h4 class="mb-3" style="color:var(--red-main)">🏮 2021-2026年春节档电影库</h4>
+
+    <div class="content-card mb-3">
+        <div class="row g-2 align-items-center">
+            <div class="col-md-3">
+                <input type="text" class="form-control" id="search-input" placeholder="搜索电影名称/导演/演员...">
+            </div>
+            <div class="col-md-2">
+                <select class="form-select" id="year-filter">
+                    <option value="all">全部年份</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select class="form-select" id="genre-filter">
+                    <option value="all">全部类型</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select class="form-select" id="score-filter">
+                    <option value="all">全部评分</option>
+                    <option value="good">口碑佳作 (≥7.5)</option>
+                    <option value="mid">中规中矩 (6.5-7.4)</option>
+                    <option value="bad">差评较多 (&lt;6.5)</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select class="form-select" id="sort-filter">
+                    <option value="score_desc">评分从高到低</option>
+                    <option value="score_asc">评分从低到高</option>
+                    <option value="year_desc">年份从新到旧</option>
+                    <option value="year_asc">年份从旧到新</option>
+                </select>
+            </div>
+            <div class="col-md-1 text-end">
+                <span class="text-muted" id="result-count" style="font-size:0.85rem">加载中...</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3" id="movie-grid"></div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let allMovies = [];
+
+fetch('/api/movies').then(r=>r.json()).then(data => {
+    allMovies = data;
+    const years = [...new Set(data.map(m=>m.年份))].sort();
+    const yearSel = document.getElementById('year-filter');
+    years.forEach(y => {
+        const opt = document.createElement('option');
+        opt.value = y; opt.textContent = y + '年';
+        yearSel.appendChild(opt);
+    });
+    
+    // 提取所有电影类型
+    const genreSet = new Set();
+    data.forEach(m => {
+        if (m.类型) {
+            m.类型.split('/').forEach(g => {
+                const genre = g.trim();
+                if (genre) genreSet.add(genre);
+            });
+        }
+    });
+    const genres = [...genreSet].sort();
+    const genreSel = document.getElementById('genre-filter');
+    genres.forEach(g => {
+        const opt = document.createElement('option');
+        opt.value = g; opt.textContent = g;
+        genreSel.appendChild(opt);
+    });
+    
+    renderMovies();
+});
+
+document.getElementById('search-input').addEventListener('input', renderMovies);
+document.getElementById('year-filter').addEventListener('change', renderMovies);
+document.getElementById('genre-filter').addEventListener('change', renderMovies);
+document.getElementById('score-filter').addEventListener('change', renderMovies);
+document.getElementById('sort-filter').addEventListener('change', renderMovies);
+
+function renderMovies() {
+    const q = document.getElementById('search-input').value.trim().toLowerCase();
+    const year = document.getElementById('year-filter').value;
+    const genre = document.getElementById('genre-filter').value;
+    const score = document.getElementById('score-filter').value;
+    const sort = document.getElementById('sort-filter').value;
+
+    let filtered = allMovies.filter(m => {
+        if (q && !m.片名.toLowerCase().includes(q) && !(m.导演||'').toLowerCase().includes(q)) return false;
+        if (year !== 'all' && m.年份 !== parseInt(year)) return false;
+        if (genre !== 'all' && (!m.类型 || !m.类型.includes(genre))) return false;
+        if (score === 'good' && m.豆瓣评分 < 7.5) return false;
+        if (score === 'mid' && (m.豆瓣评分 < 6.5 || m.豆瓣评分 >= 7.5)) return false;
+        if (score === 'bad' && m.豆瓣评分 >= 6.5) return false;
+        return true;
+    });
+
+    if (sort === 'score_desc') filtered.sort((a,b) => b.豆瓣评分 - a.豆瓣评分);
+    else if (sort === 'score_asc') filtered.sort((a,b) => a.豆瓣评分 - b.豆瓣评分);
+    else if (sort === 'year_desc') filtered.sort((a,b) => b.年份 - a.年份 || b.豆瓣评分 - a.豆瓣评分);
+    else if (sort === 'year_asc') filtered.sort((a,b) => a.年份 - b.年份 || b.豆瓣评分 - a.豆瓣评分);
+
+    document.getElementById('result-count').textContent = '共 ' + filtered.length + ' 部电影';
+
+    const grid = document.getElementById('movie-grid');
+    if (!filtered.length) {
+        grid.innerHTML = '<div class="col-12 text-center text-muted py-5">没有匹配的电影</div>';
+        return;
+    }
+    grid.innerHTML = filtered.map(m => `
+        <div class="col-6 col-md-4 col-lg-3 col-xl-2">
+            <a href="/movie/${m.movie_id}" class="movie-card">
+                <div class="poster-wrap">
+                    <img src="${posterUrl(m.海报)}" alt="${m.片名}" loading="lazy">
+                    <!-- 点赞和收藏按钮 -->
+                    <div class="card-actions">
+                        <button class="btn-icon" onclick="event.preventDefault();event.stopPropagation();toggleLike('${m.movie_id}')" title="点赞">
+                            <i class="bi bi-heart"></i>
+                        </button>
+                        <button class="btn-icon" onclick="event.preventDefault();event.stopPropagation();toggleCollect('${m.movie_id}')" title="收藏">
+                            <i class="bi bi-star"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="card-title">${m.片名}</div>
+                    <div class="d-flex align-items-center gap-1 mb-1">
+                        <span style="font-size:0.75rem;color:var(--text-muted)">${m.年份}年</span>
+                        <span style="font-size:0.75rem;color:var(--text-muted)">·</span>
+                        <span style="font-size:0.75rem;color:var(--text-muted)">${m.评论数}条</span>
+                    </div>
+                    <div class="card-meta">
+                        <span class="score">${m.豆瓣评分}</span>
+                        ${labelBadge(m.label, m.label_type)}
+                    </div>
+                </div>
+            </a>
+        </div>
+    `).join('');
+}
+</script>
+{% endblock %}

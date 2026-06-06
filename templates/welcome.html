@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>春节档电影搜索平台 - 欢迎</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        /* ===== 春节喜庆背景 ===== */
+        .spring-bg {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #5B0011 0%, #8B0000 30%, #C41E24 60%, #A01020 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            font-family: "Noto Serif SC", "PingFang SC", "Microsoft YaHei", serif;
+            color: #FFF8DC;
+        }
+
+        /* 祥云纹理 */
+        .spring-bg::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image:
+                radial-gradient(ellipse 120px 60px at 10% 20%, rgba(255,215,0,0.06) 0%, transparent 70%),
+                radial-gradient(ellipse 100px 50px at 85% 15%, rgba(255,215,0,0.05) 0%, transparent 70%),
+                radial-gradient(ellipse 150px 70px at 50% 80%, rgba(255,215,0,0.04) 0%, transparent 70%),
+                radial-gradient(ellipse 80px 40px at 20% 70%, rgba(255,215,0,0.05) 0%, transparent 70%),
+                radial-gradient(ellipse 130px 60px at 75% 55%, rgba(255,215,0,0.04) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        /* 灯笼装饰 */
+        .lantern {
+            position: absolute;
+            font-size: 2.5rem;
+            animation: swing 3s ease-in-out infinite;
+            opacity: 0.8;
+            filter: drop-shadow(0 0 10px rgba(255,200,0,0.3));
+            pointer-events: none;
+        }
+        .lantern-l1 { top: 20px; left: 8%; animation-delay: 0s; }
+        .lantern-l2 { top: 30px; right: 8%; animation-delay: 1s; }
+        .lantern-l3 { top: 60px; left: 25%; font-size: 1.8rem; animation-delay: 0.5s; }
+        .lantern-l4 { top: 50px; right: 25%; font-size: 1.8rem; animation-delay: 1.5s; }
+        .lantern-l5 { top: 10px; left: 50%; transform: translateX(-50%); font-size: 3rem; animation-delay: 0.8s; }
+
+        @keyframes swing {
+            0%, 100% { transform: rotate(-5deg); }
+            50% { transform: rotate(5deg); }
+        }
+
+        /* 烟花 canvas */
+        #fireworks-canvas {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        /* 主内容 */
+        .welcome-content {
+            position: relative;
+            z-index: 2;
+            text-align: center;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .welcome-icon {
+            font-size: 5rem;
+            margin-bottom: 1rem;
+            filter: drop-shadow(0 0 20px rgba(255,215,0,0.4));
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-12px); }
+        }
+
+        .welcome-title {
+            font-size: 3rem;
+            font-weight: 900;
+            background: linear-gradient(135deg, #FFD700, #FFF8DC, #FFD700);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: 4px;
+            margin-bottom: 0.5rem;
+        }
+
+        .welcome-subtitle {
+            font-size: 1.1rem;
+            color: rgba(255,248,220,0.85);
+            margin-bottom: 1.5rem;
+            letter-spacing: 2px;
+            font-weight: 400;
+        }
+
+        .welcome-subtitle span {
+            color: #FFD700;
+            font-weight: 600;
+        }
+
+        /* 数据概览卡片 */
+        .stats-row {
+            display: flex;
+            gap: 1.5rem;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .stat-item {
+            background: rgba(255,248,220,0.1);
+            border: 1px solid rgba(255,215,0,0.25);
+            border-radius: 12px;
+            padding: 1rem 1.8rem;
+            min-width: 130px;
+            backdrop-filter: blur(8px);
+            transition: transform 0.3s, background 0.3s;
+        }
+
+        .stat-item:hover {
+            transform: translateY(-4px);
+            background: rgba(255,248,220,0.18);
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 900;
+            color: #FFD700;
+            line-height: 1.2;
+        }
+
+        .stat-desc {
+            font-size: 0.85rem;
+            color: rgba(255,248,220,0.7);
+            margin-top: 4px;
+        }
+
+        /* 进入按钮 */
+        .enter-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 16px 52px;
+            font-size: 1.25rem;
+            font-weight: 700;
+            font-family: inherit;
+            color: #8B0000;
+            background: linear-gradient(135deg, #FFD700 0%, #FFF8DC 50%, #FFD700 100%);
+            border: 2px solid #B8860B;
+            border-radius: 50px;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 6px 25px rgba(255,215,0,0.3), 0 0 40px rgba(255,215,0,0.1);
+            letter-spacing: 3px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .enter-btn::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.3) 50%, transparent 70%);
+            transform: rotate(45deg) translateX(-100%);
+            transition: transform 0.6s;
+        }
+
+        .enter-btn:hover::before {
+            transform: rotate(45deg) translateX(100%);
+        }
+
+        .enter-btn:hover {
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 10px 35px rgba(255,215,0,0.5), 0 0 60px rgba(255,215,0,0.15);
+        }
+
+        .enter-btn:active {
+            transform: translateY(0) scale(0.98);
+        }
+
+        .enter-arrow {
+            font-size: 1.4rem;
+            transition: transform 0.3s;
+        }
+
+        .enter-btn:hover .enter-arrow {
+            transform: translateX(4px);
+        }
+
+        /* 底部信息 */
+        .welcome-footer {
+            position: absolute;
+            bottom: 20px;
+            text-align: center;
+            color: rgba(255,248,220,0.4);
+            font-size: 0.8rem;
+            letter-spacing: 1px;
+        }
+
+        /* 飘落元素 */
+        .floating-element {
+            position: absolute;
+            pointer-events: none;
+            z-index: 1;
+            animation: fall linear infinite;
+            opacity: 0.5;
+        }
+
+        @keyframes fall {
+            0% { transform: translateY(-100px) rotate(0deg); opacity: 0; }
+            10% { opacity: 0.5; }
+            90% { opacity: 0.5; }
+            100% { transform: translateY(calc(100vh + 100px)) rotate(720deg); opacity: 0; }
+        }
+
+        /* ===== 3D海报旋转轮播（中间图层） ===== */
+        .carousel-3d {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100%;
+            height: 100%;
+            perspective: 1800px;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .carousel-scene {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+        }
+
+        .carousel-ring {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0; height: 0;
+            transform-style: preserve-3d;
+        }
+
+        .carousel-item {
+            position: absolute;
+            width: 200px;
+            height: 300px;
+            left: -100px;
+            top: -150px;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.4), 0 0 15px rgba(255,215,0,0.08);
+            border: 2px solid rgba(255,215,0,0.12);
+            backface-visibility: hidden;
+            opacity: 0.35;
+        }
+
+        .carousel-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .carousel-item .poster-overlay {
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            background: linear-gradient(transparent, rgba(0,0,0,0.75));
+            padding: 28px 8px 8px;
+            color: #FFD700;
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-align: center;
+            letter-spacing: 1px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .carousel-item .poster-score {
+            position: absolute;
+            top: 8px; right: 8px;
+            background: rgba(139,0,0,0.85);
+            color: #FFD700;
+            font-size: 0.75rem;
+            font-weight: 900;
+            padding: 3px 8px;
+            border-radius: 4px;
+            border: 1px solid rgba(255,215,0,0.3);
+        }
+
+        /* 响应式 */
+        @media (max-width: 768px) {
+            .welcome-title { font-size: 2rem; letter-spacing: 2px; }
+            .welcome-subtitle { font-size: 0.95rem; }
+            .stats-row { gap: 0.8rem; }
+            .stat-item { padding: 0.8rem 1.2rem; min-width: 100px; }
+            .stat-number { font-size: 1.5rem; }
+            .enter-btn { padding: 14px 36px; font-size: 1.1rem; }
+            .lantern-l3, .lantern-l4 { display: none; }
+            .carousel-item { width: 140px; height: 210px; left: -70px; top: -105px; }
+        }
+
+        @media (max-width: 480px) {
+            .welcome-title { font-size: 1.6rem; }
+            .welcome-icon { font-size: 3.5rem; }
+            .lantern { font-size: 1.5rem; }
+            .lantern-l5 { font-size: 2rem; }
+            .carousel-item { width: 110px; height: 165px; left: -55px; top: -82px; }
+        }
+    </style>
+</head>
+<body>
+<div class="spring-bg">
+    <!-- 灯笼 -->
+    <div class="lantern lantern-l1">🏮</div>
+    <div class="lantern lantern-l2">🏮</div>
+    <div class="lantern lantern-l3">🏮</div>
+    <div class="lantern lantern-l4">🏮</div>
+    <div class="lantern lantern-l5">🏮</div>
+
+    <!-- 3D海报旋转轮播（中间图层） -->
+    <div class="carousel-3d">
+        <div class="carousel-scene">
+            <div class="carousel-ring" id="poster-carousel"></div>
+        </div>
+    </div>
+
+    <!-- 烟花 -->
+    <canvas id="fireworks-canvas"></canvas>
+
+    <!-- 飘落元素 -->
+    <div class="floating-element" style="left:5%;font-size:1.2rem;animation-duration:12s;animation-delay:0s">✨</div>
+    <div class="floating-element" style="left:20%;font-size:1rem;animation-duration:15s;animation-delay:3s">🧧</div>
+    <div class="floating-element" style="left:40%;font-size:1.3rem;animation-duration:11s;animation-delay:1s">✨</div>
+    <div class="floating-element" style="left:60%;font-size:1rem;animation-duration:14s;animation-delay:5s">🧧</div>
+    <div class="floating-element" style="left:80%;font-size:1.2rem;animation-duration:13s;animation-delay:2s">✨</div>
+    <div class="floating-element" style="left:92%;font-size:1rem;animation-duration:16s;animation-delay:7s">🧧</div>
+
+    <!-- 主内容（最上层） -->
+    <div class="welcome-content">
+        <div class="welcome-icon">🏮</div>
+        <h1 class="welcome-title">春节档电影搜索平台</h1>
+        <p class="welcome-subtitle">
+            汇聚 <span>2021-2026</span> 年春节档电影 · <span>36</span> 部影片 · <span>14000+</span> 条真实评论
+        </p>
+
+        <div class="stats-row">
+            <div class="stat-item">
+                <div class="stat-number">36</div>
+                <div class="stat-desc">🎬 精选电影</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">6</div>
+                <div class="stat-desc">📅 覆盖年份</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">14000+</div>
+                <div class="stat-desc">💬 真实评论</div>
+            </div>
+        </div>
+
+        <a href="/home" class="enter-btn">
+            点击进入 <span class="enter-arrow">→</span>
+        </a>
+    </div>
+
+    <div class="welcome-footer">
+        🏮 数据来源：豆瓣电影 · 帮你选对片 避雷坑 🏮
+    </div>
+</div>
+
+<!-- 欢迎页专用烟花动画 + 3D轮播 -->
+<script>
+// ===== 3D海报旋转轮播 =====
+(function() {
+    const ring = document.getElementById('poster-carousel');
+    if (!ring) return;
+    let currentAngle = 0;
+
+    fetch('/api/overview')
+        .then(r => r.json())
+        .then(data => {
+            const movies = data.top10;
+            const count = movies.length;
+            const angleStep = 360 / count;
+            // 大半径让海报更分散
+            const radius = Math.max(400, count * 35);
+
+            movies.forEach((m, i) => {
+                const item = document.createElement('div');
+                item.className = 'carousel-item';
+                item.style.transform = 'rotateY(' + (angleStep * i) + 'deg) translateZ(' + radius + 'px)';
+                item.innerHTML =
+                    '<img src="/posters/' + encodeURIComponent(m.海报 || '') + '" alt="' + m.片名 + '" loading="lazy">'
+                    + '<div class="poster-overlay">' + m.片名 + '</div>'
+                    + '<div class="poster-score">⭐ ' + m.豆瓣评分 + '</div>';
+                ring.appendChild(item);
+            });
+
+            // 慢速旋转，约60秒一圈
+            setInterval(() => {
+                currentAngle -= angleStep / 360;
+                ring.style.transform = 'rotateY(' + currentAngle + 'deg)';
+            }, 16);
+        });
+})();
+
+// ===== 烟花动画 =====
+(function() {
+    const canvas = document.getElementById('fireworks-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    let particles = [];
+    let rockets = [];
+
+    function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    const colors = ['#FFD700','#FF6347','#FF4500','#FFA500','#FFD700','#FFEC8B','#FF69B4'];
+
+    class Rocket {
+        constructor() {
+            this.x = Math.random() * canvas.width;
+            this.y = canvas.height;
+            this.targetY = Math.random() * canvas.height * 0.4 + 50;
+            this.speed = 3 + Math.random() * 4;
+            this.color = colors[Math.floor(Math.random() * colors.length)];
+            this.trail = [];
+            this.exploded = false;
+        }
+        update() {
+            this.y -= this.speed;
+            this.trail.push({x: this.x, y: this.y, alpha: 1});
+            if (this.trail.length > 8) this.trail.shift();
+            if (this.y <= this.targetY && !this.exploded) {
+                this.exploded = true;
+                this.explode();
+            }
+        }
+        explode() {
+            const count = 50 + Math.floor(Math.random() * 30);
+            for (let i = 0; i < count; i++) {
+                const angle = (Math.PI * 2 / count) * i;
+                const speed = 1 + Math.random() * 3;
+                particles.push(new Particle(this.x, this.y, angle, speed, this.color));
+            }
+        }
+        draw() {
+            for (let i = 0; i < this.trail.length; i++) {
+                const t = this.trail[i];
+                ctx.beginPath();
+                ctx.arc(t.x, t.y, 2, 0, Math.PI * 2);
+                ctx.globalAlpha = i / this.trail.length * 0.6;
+                ctx.fillStyle = this.color;
+                ctx.fill();
+            }
+            ctx.globalAlpha = 1;
+        }
+    }
+
+    class Particle {
+        constructor(x, y, angle, speed, color) {
+            this.x = x; this.y = y;
+            this.vx = Math.cos(angle) * speed;
+            this.vy = Math.sin(angle) * speed;
+            this.alpha = 1;
+            this.decay = 0.008 + Math.random() * 0.015;
+            this.color = color;
+            this.size = 1.5 + Math.random() * 1.5;
+        }
+        update() {
+            this.x += this.vx;
+            this.y += this.vy;
+            this.vy += 0.03;
+            this.alpha -= this.decay;
+        }
+        draw() {
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+            ctx.globalAlpha = this.alpha;
+            ctx.fillStyle = this.color;
+            ctx.fill();
+            ctx.globalAlpha = 1;
+        }
+    }
+
+    let frame = 0;
+    function animate() {
+        requestAnimationFrame(animate);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        frame++;
+        if (frame % 90 === 0) rockets.push(new Rocket());
+
+        for (let i = rockets.length - 1; i >= 0; i--) {
+            rockets[i].update();
+            rockets[i].draw();
+            if (rockets[i].exploded) rockets.splice(i, 1);
+        }
+        for (let i = particles.length - 1; i >= 0; i--) {
+            particles[i].update();
+            particles[i].draw();
+            if (particles[i].alpha <= 0) particles.splice(i, 1);
+        }
+    }
+    // 初始放一波烟花
+    for (let i = 0; i < 3; i++) setTimeout(() => rockets.push(new Rocket()), i * 400);
+    animate();
+})();
+</script>
+</body>
+</html>

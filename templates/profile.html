@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}个人中心 - 春节档观影决策平台{% endblock %}
+{% block content %}
+<div class="container py-4">
+    <h3 class="mb-4" style="color:var(--red-main)"> 个人中心</h3>
+    
+    <!-- 标签页切换 -->
+    <ul class="nav nav-tabs mb-4" id="profile-tabs">
+        <li class="nav-item">
+            <a class="nav-link active" data-bs-toggle="tab" href="#liked">❤️ 我的点赞</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" data-bs-toggle="tab" href="#collected">⭐ 我的收藏</a>
+        </li>
+    </ul>
+    
+    <!-- 内容区域 -->
+    <div class="tab-content">
+        <div class="tab-pane fade show active" id="liked">
+            <div class="row g-3" id="liked-list"></div>
+        </div>
+        <div class="tab-pane fade" id="collected">
+            <div class="row g-3" id="collected-list"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 页面加载时渲染列表
+document.addEventListener('DOMContentLoaded', function() {
+    renderProfile();
+});
+</script>
+{% endblock %}

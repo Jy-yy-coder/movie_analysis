@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}年度对比 - 春节档观影决策平台{% endblock %}
+
+{% block content %}
+<div class="container py-3">
+    <h4 class="mb-3"><i class="bi bi-bar-chart"></i> 年度口碑对比</h4>
+
+    <ul class="nav year-tabs mb-3" id="yearTabs"></ul>
+
+    <div class="row">
+        <div class="col-lg-6">
+            <div class="content-section">
+                <h5 class="section-title"><i class="bi bi-trophy"></i> 评分排行</h5>
+                <div id="rank-chart" class="chart-container"></div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="content-section">
+                <h5 class="section-title"><i class="bi bi-emoji-smile"></i> 情感对比</h5>
+                <div id="sentiment-chart" class="chart-container"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="content-section">
+        <h5 class="section-title"><i class="bi bi-list-ol"></i> 详细排名</h5>
+        <div id="movie-table"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentYear = 2025;
+const years = [2021, 2022, 2023, 2024, 2025, 2026];
+
+// 初始化Tab
+const tabs = document.getElementById('yearTabs');
+years.forEach(y => {
+    const li = document.createElement('li');
+    li.className = 'nav-item';
+    li.innerHTML = `<a class="nav-link ${y === currentYear ? 'active' : ''}" data-year="${y}">${y}</a>`;
+    tabs.appendChild(li);
+});
+tabs.addEventListener('click', function(e) {
+    if (e.target.dataset.year) {
+        tabs.querySelectorAll('.nav-link').forEach(a => a.classList.remove('active'));
+        e.target.classList.add('active');
+        currentYear = parseInt(e.target.dataset.year);
+        loadYear(currentYear);
+    }
+});
+loadYear(currentYear);
+
+function loadYear(year) {
+    fetch('/api/yearly/' + year).then(r => r.json()).then(d => {
+        renderRankChart(d.movies);
+        renderSentimentChart(d.movies);
+        renderTable(d.movies, year);
+    });
+}
+
+function renderRankChart(movies) {
+    const sorted = [...movies].sort((a, b) => a.豆瓣评分 - b.豆瓣评分);
+    const chart = echarts.init(document.getElementById('rank-chart'));
+    chart.setOption({
+        tooltip: { trigger: 'axis' },
+        grid: { left: '3%', right: '10%', bottom: '3%', top: '3%', containLabel: true },
+        xAxis: { type: 'value', min: 4, max: 10 },
+        yAxis: { type: 'category', data: sorted.map(m => m.片名), axisLabel: { fontSize: 11 } },
+        series: [{
+            type: 'bar',
+            data: sorted.map(m => ({
+                value: m.豆瓣评分,
+                itemStyle: { color: m.豆瓣评分 >= 7.5 ? '#28a745' : m.豆瓣评分 >= 6.5 ? '#ffc107' : '#dc3545' }
+            })),
+            barWidth: '55%',
+            label: { show: true, position: 'right', formatter: '{c}', fontSize: 12, fontWeight: 'bold' }
+        }]
+    });
+    window.addEventListener('resize', () => chart.resize());
+}
+
+function renderSentimentChart(movies) {
+    const chart = echarts.init(document.getElementById('sentiment-chart'));
+    chart.setOption({
+        tooltip: { trigger: 'axis' },
+        legend: { data: ['正面', '负面'] },
+        grid: { left: '3%', right: '3%', bottom: '3%', top: '15%', containLabel: true },
+        xAxis: { type: 'category', data: movies.map(m => m.片名), axisLabel: { rotate: 30, fontSize: 10 } },
+        yAxis: { type: 'value', axisLabel: { formatter: '{value}%' } },
+        series: [
+            { name: '正面', type: 'bar', stack: 'sent', data: movies.map(m => (m.正面比例 * 100).toFixed(1)), itemStyle: { color: '#28a745' } },
+            { name: '负面', type: 'bar', stack: 'sent', data: movies.map(m => (m.负面比例 * 100).toFixed(1)), itemStyle: { color: '#dc3545' } }
+        ]
+    });
+    window.addEventListener('resize', () => chart.resize());
+}
+
+function renderTable(movies, year) {
+    document.getElementById('movie-table').innerHTML = `
+    <div class="table-responsive">
+        <table class="table compare-table table-hover">
+            <thead><tr><th>#</th><th>片名</th><th>豆瓣评分</th><th>口碑</th><th>正面率</th><th>负面率</th></tr></thead>
+            <tbody>${movies.map((m, i) => `
+                <tr>
+                    <td>${i + 1}</td>
+                    <td><a href="/movie/${m.movie_id}" class="text-decoration-none fw-bold">${m.片名}</a></td>
+                    <td><strong class="${m.豆瓣评分 >= 7.5 ? 'text-success' : m.豆瓣评分 >= 6.5 ? 'text-warning' : 'text-danger'}">${m.豆瓣评分}</strong></td>
+                    <td><span class="badge ${m.label_type === 'success' ? 'badge-good' : m.label_type === 'warning' ? 'badge-mid' : 'badge-bad'}">${m.label}</span></td>
+                    <td class="text-success">${(m.正面比例 * 100).toFixed(1)}%</td>
+                    <td class="text-danger">${(m.负面比例 * 100).toFixed(1)}%</td>
+                </tr>
+            `).join('')}</tbody>
+        </table>
+    </div>
+    <p class="text-muted mt-2">${year}年春节档共${movies.length}部电影，平均豆瓣评分 ${movies.reduce((s,m) => s + m.豆瓣评分, 0) / movies.length}</p>`;
+}
+</script>
+{% endblock %}

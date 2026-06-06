@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% block title %}负面评价分析 - 春节档观影决策平台{% endblock %}
+
+{% block content %}
+<div class="container py-3">
+    <h4 class="mb-3"><i class="bi bi-chat-left-text"></i> 负面评价深度分析</h4>
+    <p class="text-muted">基于5326条负面评论的LDA主题建模分析，揭示观众吐槽的5大核心问题</p>
+
+    <!-- 5大主题卡片 -->
+    <div class="row" id="topic-cards"></div>
+
+    <div class="row mt-3">
+        <!-- 主题分布饼图 -->
+        <div class="col-lg-5">
+            <div class="content-section">
+                <h5 class="section-title"><i class="bi bi-pie-chart"></i> 主题占比分布</h5>
+                <div id="pie-chart" class="chart-container"></div>
+            </div>
+        </div>
+        <!-- 各电影负面主题热力图 -->
+        <div class="col-lg-7">
+            <div class="content-section">
+                <h5 class="section-title"><i class="bi bi-grid-3x3"></i> 各电影负面主题分布</h5>
+                <div id="heatmap-chart" class="chart-container"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 负面高频词 -->
+    <div class="content-section">
+        <h5 class="section-title"><i class="bi bi-type-bold"></i> 负面评论高频词 Top30</h5>
+        <div id="word-tags" class="text-center"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const topicColors = ['#E74C3C', '#3498DB', '#2ECC71', '#F39C12', '#9B59B6'];
+
+fetch('/api/negative_topics').then(r => r.json()).then(d => {
+    renderTopicCards(d.topics);
+    renderPieChart(d.topics);
+    renderHeatmap(d.movie_topic_matrix, d.topics);
+    renderWordTags(d.topics);
+});
+
+function renderTopicCards(topics) {
+    document.getElementById('topic-cards').innerHTML = topics.map((t, i) => `
+        <div class="col-lg mb-3">
+            <div class="topic-card" style="background:${topicColors[i]}">
+                <div class="topic-num">${t.主题编号}</div>
+                <div class="topic-name">${t.主题名称}</div>
+                <div class="topic-pct">${t.占比}%</div>
+                <small>${t.文档数}条评论</small>
+                <div class="mt-2">
+                    ${t.关键词.slice(0, 8).map(k => `<span class="topic-keyword">${k.词}</span>`).join('')}
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function renderPieChart(topics) {
+    const chart = echarts.init(document.getElementById('pie-chart'));
+    chart.setOption({
+        tooltip: { trigger: 'item', formatter: '{b}: {c}条 ({d}%)' },
+        legend: { orient: 'vertical', left: 'left', top: 'center' },
+        series: [{
+            type: 'pie', radius: ['40%', '65%'], center: ['60%', '50%'],
+            label: { formatter: '{b}\n{d}%', fontSize: 11 },
+            data: topics.map((t, i) => ({
+                value: t.文档数,
+                name: t.主题名称,
+                itemStyle: { color: topicColors[i] }
+            }))
+        }]
+    });
+    window.addEventListener('resize', () => chart.resize());
+}
+
+function renderHeatmap(matrix, topics) {
+    if (!matrix || matrix.length === 0) return;
+    // 取负面数最多的15部电影
+    const top15 = [...matrix].sort((a, b) => b.负面总数 - a.负面总数).slice(0, 15);
+    const topicNames = topics.map(t => t.主题名称);
+
+    const chart = echarts.init(document.getElementById('heatmap-chart'));
+    const heatData = [];
+    top15.forEach((m, mi) => {
+        topicNames.forEach((tn, ti) => {
+            heatData.push([ti, mi, m.主题分布[tn] || 0]);
+        });
+    });
+
+    const maxVal = Math.max(...heatData.map(d => d[2]));
+    chart.setOption({
+        tooltip: { formatter: p => `${top15[p.value[1]].片名}<br>${topicNames[p.value[0]]}: ${p.value[2]}条` },
+        grid: { left: '15%', right: '10%', bottom: '15%', top: '5%' },
+        xAxis: { type: 'category', data: topicNames, axisLabel: { fontSize: 10, rotate: 20 } },
+        yAxis: { type: 'category', data: top15.map(m => m.片名), axisLabel: { fontSize: 10 } },
+        visualMap: { min: 0, max: maxVal, orient: 'horizontal', left: 'center', bottom: '0%', inRange: { color: ['#fff', '#fee', '#fcc', '#f99', '#E74C3C'] } },
+        series: [{
+            type: 'heatmap', data: heatData, label: { show: true, fontSize: 10, formatter: p => p.value[2] || '' },
+            emphasis: { itemStyle: { shadowBlur: 5, shadowColor: 'rgba(0,0,0,0.3)' } }
+        }]
+    });
+    window.addEventListener('resize', () => chart.resize());
+}
+
+function renderWordTags(topics) {
+    const allWords = [];
+    topics.forEach(t => {
+        t.关键词.forEach(k => allWords.push(k));
+    });
+    allWords.sort((a, b) => b.权重 - a.权重);
+    const top30 = allWords.slice(0, 30);
+    const maxW = top30[0].权重;
+    const minW = top30[top30.length - 1].权重;
+    document.getElementById('word-tags').innerHTML = top30.map(w => {
+        const size = 14 + ((w.权重 - minW) / (maxW - minW)) * 20;
+        const opacity = 0.5 + ((w.权重 - minW) / (maxW - minW)) * 0.5;
+        return `<span style="display:inline-block;padding:3px 8px;margin:3px;font-size:${size}px;color:#E74C3C;opacity:${opacity};font-weight:${w.权重 > maxW*0.6 ? 'bold' : 'normal'}">${w.词}</span>`;
+    }).join('');
+}
+</script>
+{% endblock %}

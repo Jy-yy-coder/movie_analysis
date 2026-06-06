@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}春节档电影观影决策平台{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="/static/css/style.css" rel="stylesheet">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-dark fixed-top navbar-custom shadow">
+        <div class="container">
+            <a class="navbar-brand" href="/home">🧧</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="mainNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item"><a class="nav-link" href="/home"><i class="bi bi-house-door"></i> 首页</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/library"><i class="bi bi-grid-3x3-gap"></i> 电影库</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/yearly"><i class="bi bi-graph-up-arrow"></i> 年度分析</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/analysis"><i class="bi bi-bar-chart"></i> 口碑分析</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/profile"><i class="bi bi-person"></i> 个人中心</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer-custom text-center">
+        <div class="container">
+            <p class="mb-0 small">🏮 2021-2026 中国春节档电影 | 数据来源：豆瓣电影 🏮</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script src="/static/js/user.js"></script>
+    <script>
+    // 全局搜索
+    (function(){
+        const input = document.getElementById('global-search');
+        const results = document.getElementById('search-results');
+        if(!input) return;
+        let timer;
+        input.addEventListener('input', function(){
+            clearTimeout(timer);
+            const q = this.value.trim();
+            if(!q){ results.style.display='none'; return; }
+            timer = setTimeout(()=>{
+                fetch('/api/search?q='+encodeURIComponent(q))
+                    .then(r=>r.json())
+                    .then(data=>{
+                        if(!data.length){
+                            results.innerHTML = '<div class="search-empty">未找到相关电影</div>';
+                            results.style.display='block';
+                            return;
+                        }
+                        results.innerHTML = data.map(m=>{
+                            var bg = m.label_type==='success'?'#155724':m.label_type==='warning'?'#856404':'#8B0000';
+                            return '<a href="/movie/'+m.movie_id+'" class="search-result-item">'
+                                +'<div class="search-result-poster">'
+                                +(m.海报 ? '<img src="/posters/'+encodeURIComponent(m.海报)+'" alt="'+m.片名+'">' : '<div class="search-poster-placeholder">🎬</div>')
+                                +'</div>'
+                                +'<div class="search-result-info">'
+                                +'<div class="search-result-title">'+m.片名+'</div>'
+                                +'<div class="search-result-meta">'+m.年份+'年 · '+m.导演.split('/')[0].trim()+'</div>'
+                                +'</div>'
+                                +'<div class="search-result-score" style="background:'+bg+'">'+m.豆瓣评分+'</div>'
+                                +'</a>';
+                        }).join('');
+                        results.style.display='block';
+                    });
+            }, 300);
+        });
+        input.addEventListener('blur', function(){ setTimeout(function(){results.style.display='none';}, 200); });
+        input.addEventListener('focus', function(){ if(this.value.trim()) this.dispatchEvent(new Event('input')); });
+        // ESC关闭
+        input.addEventListener('keydown', function(e){
+            if(e.key==='Escape'){ this.value=''; results.style.display='none'; }
+        });
+    })();
+
+    // 工具函数
+    function posterUrl(poster) {
+        return poster ? '/posters/' + encodeURIComponent(poster) : '';
+    }
+    function starsHtml(score) {
+        var full = Math.floor(score / 2);
+        var half = (score % 2 >= 1) ? 1 : 0;
+        var empty = 5 - full - half;
+        var h = '';
+        for(var i=0;i<full;i++) h+='<i class="bi bi-star-fill text-warning"></i>';
+        for(var i=0;i<half;i++) h+='<i class="bi bi-star-half text-warning"></i>';
+        for(var i=0;i<empty;i++) h+='<i class="bi bi-star text-warning"></i>';
+        return h;
+    }
+    function labelBadge(label, type) {
+        var bg = type==='success'?'#155724':type==='warning'?'#856404':'#8B0000';
+        return '<span style="display:inline-flex;align-items:center;justify-content:center;background:'+bg+';color:#fff;font-size:0.75rem;padding:3px 10px;border-radius:4px;min-width:70px;text-align:center;height:28px">'+label+'</span>';
+    }
+    function recStars(n) {
+        var h='';
+        for(var i=0;i<5;i++) h += '<i class="bi bi-star'+(i<n?'-fill':'')+' '+(i<n?'text-warning':'text-muted')+'"></i>';
+        return h;
+    }
+    function truncate(s, len) {
+        if(!s) return '';
+        return s.length > len ? s.substring(0, len) + '...' : s;
+    }
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,243 @@
+{% extends "base.html" %}
+{% block title %}口碑分析 - 春节档观影决策平台{% endblock %}
+{% block content %}
+<div class="container py-3">
+    <h4 class="mb-4" style="color:var(--red-main)">📊 口碑分析</h4>
+
+    <!-- 第一行：2021-2026年春节档评分趋势 -->
+    <div class="content-card mb-4">
+        <div class="section-title"><i class="bi bi-graph-up"></i> 2021年-2026年春节档评分趋势</div>
+        <div id="trend-chart" class="chart-box" style="height:320px"></div>
+    </div>
+
+    <!-- 第二行：总体情感分布和情感比例变化 -->
+    <div class="row g-3 mb-4">
+        <div class="col-lg-5">
+            <div class="content-card">
+                <div class="section-title" style="white-space: nowrap; overflow: visible;"><i class="bi bi-pie-chart-fill"></i> 总体情感分布</div>
+                <div id="overall-sentiment-pie" style="height:350px"></div>
+            </div>
+        </div>
+        <div class="col-lg-7">
+            <div class="content-card">
+                <div class="section-title" style="white-space: nowrap; overflow: visible;"><i class="bi bi-graph-up"></i> 情感比例变化</div>
+                <div id="trend-sentiment" class="chart-box" style="height:350px"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 第三行：负面评论主题分布 -->
+    <div class="content-card">
+        <div class="section-title" style="white-space: nowrap; overflow: visible;"><i class="bi bi-tags-fill"></i> 负面评论主题分布</div>
+        <div id="topic-distribution-bar" style="height:350px"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+
+let trendsData = [];
+
+// 加载跨年度趋势数据
+fetch('/api/yearly_all').then(r=>r.json()).then(data => {
+    trendsData = data;
+    renderTrends();
+});
+
+// 加载情感分布和主题分布数据
+fetch('/api/analysis-data').then(r => r.json()).then(data => {
+    if (data.error) {
+        console.error('加载分析数据失败:', data.error);
+        return;
+    }
+    
+    // 渲染总体情感分布饼图
+    if (data.sentiment_distribution && data.sentiment_distribution.length > 0) {
+        renderOverallSentimentPie(data.sentiment_distribution);
+    }
+    
+    // 渲染负面评论主题分布
+    if (data.topic_distribution && data.topic_distribution.length > 0) {
+        renderTopicDistributionBar(data.topic_distribution);
+    }
+});
+
+// 第一行：2021-2026年春节档评分趋势（与首页相同）
+fetch('/api/trends').then(r=>r.json()).then(data => {
+    var chart = echarts.init(document.getElementById('trend-chart'));
+    chart.setOption({
+        tooltip: { trigger: 'axis' },
+        legend: { data: ['平均评分', '电影数量', '评论总量'], top: 0, textStyle:{fontSize:11} },
+        grid: { left: 50, right: 60, bottom: 30, top: 40 },
+        xAxis: { type: 'category', data: data.map(function(d){return d.year+'年';}), axisLabel:{fontSize:12} },
+        yAxis: [
+            { type: 'value', name: '评分', min: 5.5, max: 9, nameTextStyle:{fontSize:11}, axisLabel:{fontSize:11} },
+            { type: 'value', name: '数量', nameTextStyle:{fontSize:11}, axisLabel:{fontSize:11} }
+        ],
+        series: [
+            {
+                name: '平均评分', type: 'line', data: data.map(function(d){return d.avg_score;}),
+                smooth: true, symbolSize: 8, lineStyle: { width: 3 },
+                itemStyle: { color: '#C41E24' },
+                label: { show: true, formatter: '{c}', fontSize: 11, color: '#C41E24', fontWeight:'bold' },
+            },
+            {
+                name: '电影数量', type: 'bar', yAxisIndex: 1, data: data.map(function(d){return d.movie_count;}),
+                barWidth: 18, itemStyle: { color: 'rgba(218,165,32,0.25)', borderRadius: [4,4,0,0] },
+            },
+            {
+                name: '评论总量', type: 'bar', yAxisIndex: 1, data: data.map(function(d){return d.total_comments;}),
+                barWidth: 18, itemStyle: { color: 'rgba(196,30,36,0.15)', borderRadius: [4,4,0,0] },
+            }
+        ]
+    });
+    window.addEventListener('resize', function(){chart.resize();});
+});
+
+function renderTrends() {
+    if (!trendsData.length) return;
+    const years = trendsData.map(function(d){return d.year+'年';});
+
+    // 第二行右侧：情感比例变化
+    var t2 = echarts.init(document.getElementById('trend-sentiment'));
+    t2.setOption({
+        tooltip: { trigger: 'axis' },
+        legend: { data: ['正面率', '负面率'], top: 0 },
+        grid: { left: 45, right: 20, bottom: 30, top: 40 },
+        xAxis: { type: 'category', data: years },
+        yAxis: { type: 'value' },
+        series: [
+            { name:'正面率', type:'line', data: trendsData.map(function(d){return d.avg_pos_rate;}), smooth:true, itemStyle:{color:'#155724'}, lineStyle:{width:2} },
+            { name:'负面率', type:'line', data: trendsData.map(function(d){return d.avg_neg_rate;}), smooth:true, itemStyle:{color:'#8B0000'}, lineStyle:{width:2} },
+        ]
+    });
+    window.addEventListener('resize', function(){t2.resize();});
+}
+
+// 总体情感分布饼图
+function renderOverallSentimentPie(data) {
+    const chart = echarts.init(document.getElementById('overall-sentiment-pie'));
+    
+    const totalMovies = data.length;
+    const avgPositive = data.reduce((sum, item) => sum + (item['正面比例'] || 0), 0) / totalMovies;
+    const avgNeutral = data.reduce((sum, item) => sum + (item['中性比例'] || 0), 0) / totalMovies;
+    const avgNegative = data.reduce((sum, item) => sum + (item['负面比例'] || 0), 0) / totalMovies;
+    
+    const positive = (avgPositive * 100).toFixed(1);
+    const neutral = (avgNeutral * 100).toFixed(1);
+    const negative = (avgNegative * 100).toFixed(1);
+    
+    chart.setOption({
+        tooltip: { 
+            trigger: 'item',
+            formatter: '{b}: {d}%',
+            textStyle: { fontSize: 13 }
+        },
+        legend: {
+            orient: 'vertical',
+            right: '5%',
+            top: 'center',
+            textStyle: { fontSize: 13, color: '#4A3728' }
+        },
+        series: [{
+            type: 'pie',
+            radius: ['0%', '50%'],
+            center: ['38%', '50%'],
+            avoidLabelOverlap: true,
+            itemStyle: {
+                borderColor: '#fff',
+                borderWidth: 2
+            },
+            label: {
+                show: true,
+                position: 'outside',
+                formatter: '{b}: {d}%',
+                fontSize: 12,
+                color: '#4A3728'
+            },
+            labelLine: { 
+                show: true,
+                length: 12,
+                length2: 15,
+                lineStyle: { width: 1 }
+            },
+            data: [
+                { value: parseFloat(positive), name: '正面', itemStyle: { color: '#155724' } },
+                { value: parseFloat(neutral), name: '中性', itemStyle: { color: '#DAA520' } },
+                { value: parseFloat(negative), name: '负面', itemStyle: { color: '#8B0000' } }
+            ]
+        }]
+    });
+    
+    window.addEventListener('resize', () => chart.resize());
+}
+
+// 负面评论主题分布柱状图
+function renderTopicDistributionBar(data) {
+    const chart = echarts.init(document.getElementById('topic-distribution-bar'));
+    
+    const totalDocs = data.reduce((sum, item) => sum + (item['文档数'] || 0), 0);
+    
+    const topics = data.map(item => (item['主题名称'] || item['主题'] || ''));
+    const counts = data.map(item => item['文档数'] || item['评论数'] || 0);
+    const percentages = data.map(item => item['占比'] || ((item['文档数'] || 0) / totalDocs * 100).toFixed(1));
+    
+    // 统一使用网站的配色方案
+    const colors = ['#155724', '#DAA520', '#C41E24', '#8FBC8F', '#4682B4', '#8B0000'];
+    
+    chart.setOption({
+        tooltip: { 
+            trigger: 'axis',
+            formatter: function(params) {
+                const idx = params[0].dataIndex;
+                return `${topics[idx]}<br/>${counts[idx]}篇 (${percentages[idx]}%)`;
+            },
+            textStyle: { fontSize: 12 }
+        },
+        grid: { left: 180, right: 120, bottom: 40, top: 20 },
+        xAxis: {
+            type: 'value',
+            name: '数量',
+            nameLocation: 'center',
+            nameGap: 30,
+            nameTextStyle: { fontSize: 11, color: '#4A3728' },
+            axisLabel: { fontSize: 11, color: '#4A3728' }
+        },
+        yAxis: {
+            type: 'category',
+            data: topics,
+            inverse: true,
+            axisLabel: { 
+                fontSize: 11,
+                color: '#4A3728',
+                interval: 0
+            }
+        },
+        series: [{
+            type: 'bar',
+            data: counts.map((count, index) => ({
+                value: count,
+                itemStyle: {
+                    color: colors[index % colors.length],
+                    borderRadius: [0, 4, 4, 0]
+                }
+            })),
+            barWidth: '55%',
+            label: {
+                show: true,
+                position: 'right',
+                fontSize: 11,
+                color: '#4A3728',
+                formatter: function(params) {
+                    return params.value + '篇 (' + percentages[params.dataIndex] + '%)';
+                },
+                padding: [0, 0, 0, 5]
+            }
+        }]
+    });
+    
+    window.addEventListener('resize', () => chart.resize());
+}
+</script>
+{% endblock %}

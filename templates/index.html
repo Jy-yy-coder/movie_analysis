@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}2021-2026年中国春节档电影{% endblock %}
+{% block content %}
+<!-- Hero -->
+<div class="hero-section">
+    <!-- 烟花装饰 -->
+    <div class="firework firework-1"></div>
+    <div class="firework firework-2"></div>
+    <div class="firework firework-3"></div>
+    
+    <div class="container position-relative" style="z-index:1">
+        <div class="row align-items-center">
+            <div class="col-lg-6 mb-3 mb-lg-0">
+                <div style="display:flex;align-items:center;gap:12px">
+                    <span style="font-size:2.5rem;flex-shrink:0">🏮</span>
+                    <div>
+                        <h1 style="margin-bottom:0">2021-2026年中国春节档电影</h1>
+                        <p class="subtitle" style="margin-top:4px;margin-bottom:0">36部电影 · 14000+条真实评论 · 帮你选对片 避雷坑</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="row g-2" id="stats-row">
+                    <div class="col-4"><div class="stat-card"><div class="stat-value" id="stat-movies">--</div><div class="stat-label">🎬 电影</div></div></div>
+                    <div class="col-4"><div class="stat-card"><div class="stat-value" id="stat-comments">--</div><div class="stat-label">💬 评论</div></div></div>
+                    <div class="col-4"><div class="stat-card"><div class="stat-value" id="stat-avg">--</div><div class="stat-label">⭐ 均分</div></div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container pb-4">
+    <!-- 搜索栏 -->
+    <div class="search-bar">
+        <div class="search-bar-inner">
+            <i class="bi bi-search search-icon"></i>
+            <input type="text" id="global-search" placeholder="搜索电影名称/导演/演员，如：满江红/贾玲/沈腾..." autocomplete="off">
+            <div class="search-results-dropdown" id="search-results"></div>
+        </div>
+    </div>
+
+    <div class="row" style="align-items:stretch">
+        <div class="col-lg-7 d-flex">
+            <div class="content-card flex-fill">
+                <div class="section-title"><i class="bi bi-trophy"></i> 春节档TOP10电影</div>
+                <div class="row g-2" id="top10-cards"></div>
+            </div>
+        </div>
+        <div class="col-lg-5 d-flex">
+            <div class="content-card flex-fill">
+                <div class="section-title"><i class="bi bi-list-ol"></i> 全部评分排行</div>
+                <div style="max-height:500px;overflow-y:auto">
+                    <table class="rank-table" id="rank-table">
+                        <thead><tr><th>#</th><th>电影</th><th>年份</th><th>评分</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="loading" id="page-loading"><div class="spinner-border" style="color:var(--red-main)"></div><p class="mt-2">加载中...</p></div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+fetch('/api/overview').then(r=>r.json()).then(data => {
+    document.getElementById('page-loading').style.display='none';
+
+    document.getElementById('stat-movies').textContent = data.movie_count;
+    document.getElementById('stat-comments').textContent = data.total_comments.toLocaleString();
+    document.getElementById('stat-avg').textContent = data.avg_score;
+
+    var top10El = document.getElementById('top10-cards');
+    top10El.innerHTML = data.top10.map(function(m,i) {
+        return '<div class="col-6 col-md-4 col-lg-3 col-xl" style="flex:0 0 20%;max-width:20%">'
+            +'<a href="/movie/'+m.movie_id+'" class="movie-card">'
+            +'<div class="poster-wrap">'
+            +'<img src="'+posterUrl(m.海报)+'" alt="'+m.片名+'" loading="lazy">'
+            +'<span class="rank-num '+(i<3?'rank-'+(i+1):'')+'" style="position:absolute;top:6px;left:6px;background:'+(i<3?'':'var(--text-muted)')+'">'+(i+1)+'</span>'
+            +'</div>'
+            +'<div class="card-body">'
+            +'<div class="card-title">'+m.片名+'</div>'
+            +'<div class="card-meta">'
+            +'<span class="score">'+m.豆瓣评分+'</span>'
+            +labelBadge(m.label, m.label_type)
+            +'</div></div></a></div>';
+    }).join('');
+
+    var tbody = document.querySelector('#rank-table tbody');
+    tbody.innerHTML = data.ranking.map(function(r) {
+        return '<tr style="cursor:pointer" onclick="location.href=\'/movie/'+r.movie_id+'\'">'
+            +'<td><span class="rank-num '+(r.rank<=3?'rank-'+r.rank:'')+'" style="'+(r.rank>3?'background:var(--text-muted)':'')+'">'+r.rank+'</span></td>'
+            +'<td class="fw-bold">'+r.片名+'</td>'
+            +'<td class="text-muted">'+r.年份+'</td>'
+            +'<td><span class="fw-bold" style="color:'+(r.豆瓣评分>=7.5?'var(--red-main)':r.豆瓣评分>=6.5?'var(--gold-main)':'#8B0000')+'">'+r.豆瓣评分+'</span></td>'
+            +'</tr>';
+    }).join('');
+});
+
+</script>
+<script src="/static/js/fireworks.js"></script>
+{% endblock %}

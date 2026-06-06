@@ -1,0 +1,287 @@
+{% extends "base.html" %}
+{% block title %}电影详情 - 春节档观影决策平台{% endblock %}
+{% block content %}
+<div class="container py-3" id="app" style="display:none">
+
+    <div class="content-card">
+        <div class="row">
+            <div class="col-md-3 text-center mb-3 mb-md-0">
+                <img id="poster" class="detail-poster" src="" alt="">
+            </div>
+            <div class="col-md-9">
+                <h2 class="mb-2" id="title"></h2>
+                
+                <!-- 点赞和收藏按钮 -->
+                <input type="hidden" id="movie-id" value="">
+                <div class="action-buttons mb-3">
+                    <button id="like-btn" class="btn-action" onclick="toggleLike(document.getElementById('movie-id').value)">
+                        <i class="bi bi-heart"></i> 点赞
+                    </button>
+                    <button id="collect-btn" class="btn-action" onclick="toggleCollect(document.getElementById('movie-id').value)">
+                        <i class="bi bi-star"></i> 收藏
+                    </button>
+                </div>
+                
+                <div class="mb-3" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;height:32px">
+                    <span style="display:inline-flex;align-items:center;justify-content:center;background:var(--red-main);color:#fff;font-size:0.75rem;padding:3px 10px;border-radius:4px;min-width:70px;text-align:center;height:28px" id="year-badge"></span>
+                    <span id="label-badge" style="min-width:70px;text-align:center;height:28px"></span>
+                </div>
+                <div class="d-flex align-items-center gap-3 mb-3">
+                    <div class="big-score" id="big-score"></div>
+                    <div>
+                        <div id="stars"></div>
+                        <small class="text-muted" id="comment-count"></small>
+                    </div>
+                </div>
+                <div class="row mb-2" style="font-size:0.88rem">
+                    <div class="col-md-6">
+                        <div class="mb-2"><strong style="color:var(--red-main)">导演：</strong><span id="info-director"></span></div>
+                        <div class="mb-2"><strong style="color:var(--red-main)">主演：</strong><span id="info-actors"></span></div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-2"><strong style="color:var(--red-main)">类型：</strong><span id="info-genre"></span></div>
+                        <div class="mb-2"><strong style="color:var(--red-main)">片长：</strong><span id="info-runtime"></span></div>
+                        <div class="mb-2"><strong style="color:var(--red-main)">上映：</strong><span id="info-date"></span></div>
+                        <div class="mb-2"><strong style="color:var(--red-main)">语言：</strong><span id="info-lang"></span></div>
+                    </div>
+                </div>
+                <div class="row g-2 mb-2" style="font-size:0.88rem">
+                    <div class="col-12"><strong style="color:var(--red-main)">简介：</strong><span id="synopsis" style="line-height:1.7"></span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="ai-card mb-3" id="ai-section">
+        <div class="ai-title"><i class="bi bi-robot"></i> AI 智能总结</div>
+        <div class="ai-text mb-2" id="ai-oneline"></div>
+        <div class="row g-3 mt-1">
+            <div class="col-md-3">
+                <div style="background:#FFF8E7;border:1px solid #E8D5A3;border-radius:8px;padding:12px;text-align:center;height:100%">
+                    <div style="font-size:0.8rem;color:var(--text-muted)">推荐指数</div>
+                    <div id="ai-rec" class="mt-2" style="font-size:1.2rem"></div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div style="background:#E8F5E9;border:1px solid #A5D6A7;border-radius:8px;padding:12px;height:100%">
+                    <div style="font-size:0.8rem;color:#155724;font-weight:700;margin-bottom:8px"><i class="bi bi-hand-thumbs-up-fill"></i> 好评原因</div>
+                    <div id="ai-good"></div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div style="background:#FFEBEE;border:1px solid #EF9A9A;border-radius:8px;padding:12px;height:100%">
+                    <div style="font-size:0.8rem;color:#8B0000;font-weight:700;margin-bottom:8px"><i class="bi bi-hand-thumbs-down-fill"></i> 差评原因</div>
+                    <div id="ai-bad"></div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div style="background:#FFF8E1;border:1px solid #FFE082;border-radius:8px;padding:12px;height:100%">
+                    <div style="font-size:0.8rem;color:var(--gold-deep);font-weight:700;margin-bottom:8px"><i class="bi bi-tags-fill"></i> 高频关键词</div>
+                    <div id="ai-keywords"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-3">
+        <div class="col-md-6">
+            <div class="content-card">
+                <div class="section-title"><i class="bi bi-bar-chart-fill"></i> 评分分布</div>
+                <div id="rating-chart" class="chart-box" style="height:280px"></div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="content-card">
+                <div class="section-title"><i class="bi bi-pie-chart-fill"></i> 情感分析</div>
+                <div id="sentiment-chart" class="chart-box" style="height:280px"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-3">
+        <div class="col-md-6">
+            <div class="content-card">
+                <div class="section-title" style="color:#155724"><i class="bi bi-emoji-smile-fill"></i> 好评</div>
+                <div id="good-reviews"></div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="content-card">
+                <div class="section-title" style="color:#8B0000"><i class="bi bi-emoji-frown-fill"></i> 差评</div>
+                <div id="bad-reviews"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="content-card" id="compare-section">
+        <div class="section-title"><i class="bi bi-people-fill"></i> 同档期对比</div>
+        <p class="mb-2" id="rank-text" style="font-size:0.9rem"></p>
+        <div id="compare-chart" class="chart-box" style="height:280px"></div>
+    </div>
+</div>
+<div class="loading" id="page-loading"><div class="spinner-border" style="color:var(--red-main)"></div><p class="mt-2">加载中...</p></div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const movieId = '{{ movie_id }}';
+
+fetch('/api/movie/' + movieId).then(r => {
+    if (!r.ok) throw new Error('not found');
+    return r.json();
+}).then(d => {
+    document.getElementById('page-loading').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    
+    // 设置电影ID用于点赞/收藏
+    document.getElementById('movie-id').value = d.movie_id;
+    
+    // 初始化按钮状态
+    updateActionButtons();
+
+    document.getElementById('title').textContent = d.片名;
+    document.getElementById('year-badge').textContent = d.年份 + '年';
+    document.getElementById('label-badge').innerHTML = labelBadge(d.label, d.label_type);
+    document.getElementById('poster').src = posterUrl(d.海报);
+    document.getElementById('big-score').innerHTML = d.豆瓣评分 + '<span class="unit"> /10</span>';
+    document.getElementById('stars').innerHTML = starsHtml(d.豆瓣评分);
+    document.getElementById('comment-count').textContent = d.评论总数 + ' 条评论';
+    document.getElementById('info-director').textContent = d.导演 || '暂无';
+    document.getElementById('info-actors').textContent = d.主演 || '暂无';
+    document.getElementById('info-genre').textContent = d.类型 || '暂无';
+    document.getElementById('info-runtime').textContent = d.片长 || '暂无';
+    document.getElementById('info-date').textContent = d.上映日期 || '暂无';
+    document.getElementById('info-lang').textContent = d.语言 || '暂无';
+    document.getElementById('synopsis').textContent = d.剧情简介 || '暂无简介';
+
+    const ai = d.AI总结;
+    document.getElementById('ai-oneline').textContent = ai.一句话评价;
+    document.getElementById('ai-rec').innerHTML = recStars(ai.推荐指数);
+    document.getElementById('ai-good').innerHTML = ai.推荐理由.map(r =>
+        '<span class="keyword-tag tag-good">' + r.关键词 + (r.次数 ? ' ('+r.次数+')' : '') + '</span>').join('');
+    document.getElementById('ai-bad').innerHTML = ai.避雷提醒.map(r =>
+        '<span class="keyword-tag tag-bad">' + r.关键词 + (r.次数 ? ' ('+r.次数+')' : '') + '</span>').join('');
+    document.getElementById('ai-keywords').innerHTML = (ai.高频关键词||[]).map(k =>
+        '<span class="keyword-tag tag-mid">' + k.词 + ' ('+k.频次+')</span>').join('');
+
+    // 评分分布
+    const rd = d.评分分布;
+    const ratingChart = echarts.init(document.getElementById('rating-chart'));
+    ratingChart.setOption({
+        tooltip: { trigger: 'axis' },
+        grid: { left: 40, right: 20, bottom: 30, top: 10 },
+        xAxis: { type: 'category', data: ['1星','2星','3星','4星','5星'] },
+        yAxis: { type: 'value' },
+        series: [{
+            type: 'bar',
+            data: [
+                {value: rd['1']||0, itemStyle:{color:'#8B0000'}},
+                {value: rd['2']||0, itemStyle:{color:'#C41E24'}},
+                {value: rd['3']||0, itemStyle:{color:'#DAA520'}},
+                {value: rd['4']||0, itemStyle:{color:'#8FBC8F'}},
+                {value: rd['5']||0, itemStyle:{color:'#155724'}},
+            ],
+            barWidth: '50%',
+            label: { show: true, position: 'top', fontSize: 11 },
+        }]
+    });
+    window.addEventListener('resize', ()=>ratingChart.resize());
+
+    // 情感分析
+    const sd = d.情感数据;
+    const sentChart = echarts.init(document.getElementById('sentiment-chart'));
+    sentChart.setOption({
+        tooltip: { 
+            trigger: 'item', 
+            formatter: '{b}: {d}%'
+        },
+        legend: {
+            orient: 'vertical',
+            left: 'left',
+            top: 'center'
+        },
+        series: [{
+            type: 'pie',
+            radius: ['40%', '70%'],
+            center: ['60%', '50%'],
+            avoidLabelOverlap: false,
+            itemStyle: {
+                borderRadius: 8,
+                borderColor: '#fff',
+                borderWidth: 2
+            },
+            label: {
+                show: true,
+                formatter: '{b}\n{d}%',
+                fontSize: 12
+            },
+            emphasis: {
+                label: {
+                    show: true,
+                    fontSize: 14,
+                    fontWeight: 'bold'
+                }
+            },
+            labelLine: {
+                show: true
+            },
+            data: [
+                { value: sd.positive, name: '正面', itemStyle:{color:'#155724'} },
+                { value: sd.neutral, name: '中性', itemStyle:{color:'#DAA520'} },
+                { value: sd.negative, name: '负面', itemStyle:{color:'#8B0000'} },
+            ]
+        }]
+    });
+    window.addEventListener('resize', ()=>sentChart.resize());
+
+    // 评论
+    function renderReviews(reviews, containerId, isNeg) {
+        const el = document.getElementById(containerId);
+        if (!reviews.length) { el.innerHTML = '<p class="text-muted">暂无数据</p>'; return; }
+        el.innerHTML = reviews.map(r => `
+            <div class="review-card ${isNeg?'negative':''}">
+                <div class="review-user">${r.用户昵称 || '匿名'}
+                    <span style="color:${r.用户评分>=4?'#155724':r.用户评分>=3?'#DAA520':'#8B0000'}">${'★'.repeat(r.用户评分)}${'☆'.repeat(5-r.用户评分)}</span>
+                </div>
+                <div class="review-text">${r.评论内容}</div>
+                <div class="review-meta"><i class="bi bi-hand-thumbs-up-fill"></i> ${r.点赞数} · ${r.评论时间}</div>
+            </div>`).join('');
+    }
+    renderReviews(d.精选好评, 'good-reviews', false);
+    renderReviews(d.精选差评, 'bad-reviews', true);
+
+    // 同档期
+    document.getElementById('rank-text').innerHTML =
+        '该片在 <strong style="color:var(--red-main)">' + d.年份 + '</strong> 年 ' + d.同档期电影数 + ' 部春节档电影中排名第 <strong style="color:var(--red-main)">' + d.同档期排名 + '</strong>';
+    const sy = d.同档期电影;
+    const cmpChart = echarts.init(document.getElementById('compare-chart'));
+    cmpChart.setOption({
+        tooltip: { trigger: 'axis' },
+        grid: { left: 90, right: 30, bottom: 20, top: 10 },
+        xAxis: { type: 'value', min: 4, max: 10 },
+        yAxis: {
+            type: 'category',
+            data: sy.map(m => m.片名),
+            inverse: true,
+            axisLabel: { formatter: function(v) { return v.length>8?v.substring(0,8)+'...':v; } }
+        },
+        series: [{
+            type: 'bar',
+            data: sy.map(m => ({
+                value: m.豆瓣评分,
+                itemStyle: {
+                    color: m.片名 === d.片名 ? '#C41E24' : '#E8D5A3',
+                    borderRadius: [0,4,4,0]
+                }
+            })),
+            barWidth: 18,
+            label: { show: true, position: 'right', formatter: '{c}', fontSize: 11 },
+        }]
+    });
+    window.addEventListener('resize', ()=>cmpChart.resize());
+
+}).catch(err => {
+    document.getElementById('page-loading').innerHTML = '<p style="color:var(--red-main)">电影数据加载失败</p>';
+});
+</script>
+{% endblock %}

@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+
+# 浏览器数据（采集用，部署不需要）
+browser_data/
+
+# 数据处理中间产物
+data/raw/*_comments.csv
+data/raw/movie_cache.json
+data/raw/scrape_progress.json
+data/raw/movies_info.json
+data/raw/movies_info.csv
+data/analysis/
+data/database/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 虚拟环境
+venv/
+.venv/
+env/
+
+# 输出文件
+output/

@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+{% block title %}电影对比 - 春节档观影决策平台{% endblock %}
+{% block content %}
+<div class="container py-3">
+    <h4 class="mb-3"><i class="bi bi-arrow-left-right"></i> 电影对比</h4>
+
+    <!-- 选择器 -->
+    <div class="content-card">
+        <div class="row align-items-center g-3">
+            <div class="col-md-5">
+                <select class="compare-select" id="sel1"><option value="">选择电影 A</option></select>
+            </div>
+            <div class="col-md-2 text-center">
+                <div class="vs-badge">VS</div>
+            </div>
+            <div class="col-md-5">
+                <select class="compare-select" id="sel2"><option value="">选择电影 B</option></select>
+            </div>
+        </div>
+        <div class="text-center mt-2">
+            <button class="btn btn-primary" id="compare-btn" disabled><i class="bi bi-arrow-left-right"></i> 开始对比</button>
+        </div>
+    </div>
+
+    <!-- 对比结果 -->
+    <div id="compare-result" style="display:none">
+        <!-- 信息对比 -->
+        <div class="row g-3 mb-3">
+            <div class="col-md-6" id="cmp-m1"></div>
+            <div class="col-md-6" id="cmp-m2"></div>
+        </div>
+
+        <!-- 雷达图 -->
+        <div class="content-card mb-3">
+            <div class="section-title"><i class="bi bi-bullseye"></i> 多维度对比</div>
+            <div id="radar-chart" class="chart-box" style="height:350px"></div>
+        </div>
+
+        <!-- 评分分布对比 -->
+        <div class="row g-3 mb-3">
+            <div class="col-md-6">
+                <div class="content-card">
+                    <div class="section-title" id="dist-title1"></div>
+                    <div id="dist-chart1" class="chart-box" style="height:260px"></div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="content-card">
+                    <div class="section-title" id="dist-title2"></div>
+                    <div id="dist-chart2" class="chart-box" style="height:260px"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI总结对比 -->
+        <div class="row g-3">
+            <div class="col-md-6"><div class="ai-card" id="ai-cmp1"></div></div>
+            <div class="col-md-6"><div class="ai-card" id="ai-cmp2"></div></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let allMovies = [];
+
+fetch('/api/movies').then(r=>r.json()).then(data => {
+    allMovies = data;
+    const opts = data.map(m => `<option value="${m.movie_id}">${m.片名} (${m.年份}) ${m.豆瓣评分}分</option>`).join('');
+    document.getElementById('sel1').innerHTML = '<option value="">选择电影 A</option>' + opts;
+    document.getElementById('sel2').innerHTML = '<option value="">选择电影 B</option>' + opts;
+
+    // 从URL参数预选
+    const params = new URLSearchParams(location.search);
+    if (params.get('id1')) document.getElementById('sel1').value = params.get('id1');
+    if (params.get('id2')) document.getElementById('sel2').value = params.get('id2');
+    checkBtn();
+});
+
+document.getElementById('sel1').addEventListener('change', checkBtn);
+document.getElementById('sel2').addEventListener('change', checkBtn);
+document.getElementById('compare-btn').addEventListener('click', doCompare);
+
+function checkBtn() {
+    const v1 = document.getElementById('sel1').value;
+    const v2 = document.getElementById('sel2').value;
+    document.getElementById('compare-btn').disabled = !(v1 && v2 && v1 !== v2);
+}
+
+function doCompare() {
+    const id1 = document.getElementById('sel1').value;
+    const id2 = document.getElementById('sel2').value;
+    if (!id1 || !id2 || id1 === id2) return;
+
+    fetch('/api/compare?id1='+id1+'&id2='+id2).then(r=>r.json()).then(d => {
+        document.getElementById('compare-result').style.display = 'block';
+        renderCompare(d.movie1, d.movie2);
+    });
+}
+
+function renderCompare(m1, m2) {
+    // 信息卡
+    function infoHtml(m) {
+        const ai = m.AI总结;
+        return `
+            <div class="content-card">
+                <div class="row">
+                    <div class="col-4 text-center">
+                        <img src="${posterUrl(m.海报)}" style="width:100%;border-radius:8px" alt="${m.片名}">
+                    </div>
+                    <div class="col-8">
+                        <h5 class="mb-1">${m.片名} <small class="text-muted">${m.年份}</small></h5>
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <span style="font-size:1.5rem;font-weight:900;color:var(--primary)">${m.豆瓣评分}</span>
+                            ${labelBadge(m.label, 'none'.replace('none', m.豆瓣评分>=7.5?'success':m.豆瓣评分>=6.5?'warning':'danger'))}
+                        </div>
+                        <div style="font-size:0.82rem;color:#6b7280">
+                            <div>导演：${m.导演||'暂无'}</div>
+                            <div>主演：${truncate(m.主演||'暂无',40)}</div>
+                            <div>类型：${m.类型||'暂无'} · ${m.片长||''}</div>
+                            <div>评论：${m.评论总数}条</div>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+    }
+    document.getElementById('cmp-m1').innerHTML = infoHtml(m1);
+    document.getElementById('cmp-m2').innerHTML = infoHtml(m2);
+
+    // 雷达图
+    function radarVal(m) {
+        const s = m.情感数据;
+        return [
+            m.豆瓣评分,                              // 评分 0-10
+            (s.positive * 10).toFixed(1),            // 正面 0-10
+            ((1 - s.negative) * 10).toFixed(1),      // 低负面 0-10
+            Math.min(10, m.评论总数 / 50).toFixed(1),// 评论活跃度
+            m.AI总结.推荐指数 * 2,                    // 推荐 0-10
+        ];
+    }
+    const radarChart = echarts.init(document.getElementById('radar-chart'));
+    radarChart.setOption({
+        tooltip: {},
+        legend: { data: [m1.片名, m2.片名], top: 0 },
+        radar: {
+            indicator: [
+                { name: '豆瓣评分', max: 10 },
+                { name: '正面评价', max: 10 },
+                { name: '低负面率', max: 10 },
+                { name: '评论活跃', max: 10 },
+                { name: '推荐指数', max: 10 },
+            ],
+            radius: '65%'
+        },
+        series: [{
+            type: 'radar',
+            data: [
+                { value: radarVal(m1), name: m1.片名, itemStyle:{color:'#4f46e5'}, areaStyle:{color:'rgba(79,70,229,0.15)'} },
+                { value: radarVal(m2), name: m2.片名, itemStyle:{color:'#f97316'}, areaStyle:{color:'rgba(249,115,22,0.15)'} },
+            ]
+        }]
+    });
+    window.addEventListener('resize', ()=>radarChart.resize());
+
+    // 评分分布
+    function distChart(m, containerId, titleId, color) {
+        const rd = m.评分分布;
+        document.getElementById(titleId).textContent = m.片名 + ' 评分分布';
+        const c = echarts.init(document.getElementById(containerId));
+        c.setOption({
+            tooltip: { trigger: 'axis' },
+            grid: { left: 35, right: 15, bottom: 25, top: 10 },
+            xAxis: { type: 'category', data: ['1星','2星','3星','4星','5星'] },
+            yAxis: { type: 'value' },
+            series: [{
+                type: 'bar',
+                data: [rd['1']||0, rd['2']||0, rd['3']||0, rd['4']||0, rd['5']||0],
+                barWidth: '45%',
+                itemStyle: { color: color, borderRadius: [4,4,0,0] },
+                label: { show: true, position: 'top', fontSize: 10 }
+            }]
+        });
+        window.addEventListener('resize', ()=>c.resize());
+    }
+    distChart(m1, 'dist-chart1', 'dist-title1', '#4f46e5');
+    distChart(m2, 'dist-chart2', 'dist-title2', '#f97316');
+
+    // AI总结对比
+    function aiHtml(m) {
+        const ai = m.AI总结;
+        return `
+            <div class="ai-title"><i class="bi bi-robot"></i> ${m.片名} AI总结</div>
+            <div class="ai-text mb-2">${ai.一句话评价}</div>
+            <div class="mb-1"><strong>推荐指数：</strong>${recStars(ai.推荐指数)}</div>
+            <div class="mb-1"><strong style="color:#059669">好评：</strong>
+                ${ai.推荐理由.map(r=>`<span class="keyword-tag tag-good">${r.关键词}</span>`).join('')}</div>
+            <div><strong style="color:#dc2626">差评：</strong>
+                ${ai.避雷提醒.map(r=>`<span class="keyword-tag tag-bad">${r.关键词}</span>`).join('')}</div>`;
+    }
+    document.getElementById('ai-cmp1').innerHTML = aiHtml(m1);
+    document.getElementById('ai-cmp2').innerHTML = aiHtml(m2);
+}
+</script>
+{% endblock %}

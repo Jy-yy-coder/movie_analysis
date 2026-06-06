@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% block title %}年度分析 - 春节档观影决策平台{% endblock %}
+{% block content %}
+<div class="container py-3">
+    <h4 class="mb-3" style="color:var(--red-main)">🏮 2021-2026年春节档年度分析</h4>
+
+    <div class="mb-3 d-flex flex-wrap gap-2" id="year-tabs"></div>
+
+    <div class="row g-3 mb-3" id="year-summary">
+        <div class="col-4 col-md-2"><div class="content-card text-center"><div class="fw-bold fs-5" id="ys-year">--</div><small style="color:var(--text-muted)">年份</small></div></div>
+        <div class="col-4 col-md-2"><div class="content-card text-center"><div class="fw-bold fs-5" id="ys-count">--</div><small style="color:var(--text-muted)">电影数量</small></div></div>
+        <div class="col-4 col-md-2"><div class="content-card text-center"><div class="fw-bold fs-5" style="color:var(--red-main)" id="ys-avg">--</div><small style="color:var(--text-muted)">平均评分</small></div></div>
+        <div class="col-4 col-md-2"><div class="content-card text-center"><div class="fw-bold fs-5" id="ys-comments">--</div><small style="color:var(--text-muted)">评论总量</small></div></div>
+        <div class="col-4 col-md-2"><div class="content-card text-center"><div class="fw-bold fs-5" style="color:#155724" id="ys-pos">--</div><small style="color:var(--text-muted)">正面率</small></div></div>
+        <div class="col-4 col-md-2"><div class="content-card text-center"><div class="fw-bold fs-5" style="color:#8B0000" id="ys-neg">--</div><small style="color:var(--text-muted)">负面率</small></div></div>
+    </div>
+
+    <div class="row g-3 mb-3">
+        <div class="col-lg-6">
+            <div class="content-card">
+                <div class="section-title"><i class="bi bi-trophy-fill"></i> 评分排行</div>
+                <div id="rank-chart" class="chart-box" style="height:320px"></div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="content-card">
+                <div class="section-title"><i class="bi bi-emoji-smile-fill"></i> 情感对比</div>
+                <div id="sentiment-chart" class="chart-box" style="height:320px"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="content-card mt-3">
+        <div class="section-title"><i class="bi bi-grid-3x3-gap"></i> 电影列表</div>
+        <div class="row g-2" id="movie-list"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+
+let allYearsData = {};
+let currentYear = 2025;
+let trendsData = [];
+
+fetch('/api/yearly_all').then(r=>r.json()).then(data => {
+    trendsData = data;
+    renderTrends();
+});
+
+fetch('/api/trends').then(r=>r.json()).then(data => {
+    const tabs = document.getElementById('year-tabs');
+    const years = data.map(d=>d.year);
+    currentYear = years[years.length - 2] || years[years.length - 1];
+
+    tabs.innerHTML = years.map(y =>
+        '<button class="year-tab" data-year="'+y+'" onclick="switchYear('+y+')">'+y+'</button>'
+    ).join('');
+
+    years.forEach(y => {
+        fetch('/api/yearly/' + y).then(r=>r.json()).then(d => {
+            allYearsData[y] = d;
+            if (y === currentYear) renderYear(y);
+        });
+    });
+});
+
+function switchYear(year) {
+    currentYear = year;
+    document.querySelectorAll('.year-tab').forEach(t => {
+        t.classList.toggle('active', parseInt(t.dataset.year) === year);
+    });
+    renderYear(year);
+}
+
+function renderYear(year) {
+    const d = allYearsData[year];
+    if (!d) return;
+
+    document.getElementById('ys-year').textContent = d.year + '年';
+    document.getElementById('ys-count').textContent = d.count + '部';
+    document.getElementById('ys-avg').textContent = d.avg_score;
+    document.getElementById('ys-comments').textContent = d.total_comments;
+
+    const t = trendsData.find(t=>t.year===year);
+    if (t) {
+        document.getElementById('ys-pos').textContent = (t.avg_pos_rate * 100).toFixed(0) + '%';
+        document.getElementById('ys-neg').textContent = (t.avg_neg_rate * 100).toFixed(0) + '%';
+    }
+
+    const rankChart = echarts.init(document.getElementById('rank-chart'));
+    rankChart.setOption({
+        tooltip: { trigger: 'axis' },
+        grid: { left: 140, right: 30, bottom: 60, top: 10 },
+        xAxis: { type: 'value', min: 4, max: 10 },
+        yAxis: {
+            type: 'category',
+            data: d.movies.map(m=>m.片名).reverse(),
+            axisLabel: { fontSize: 11 }
+        },
+        series: [{
+            type: 'bar',
+            data: d.movies.map(m => ({
+                value: m.豆瓣评分,
+                itemStyle: { color: m.豆瓣评分>=7.5?'#155724':m.豆瓣评分>=6.5?'#DAA520':'#8B0000', borderRadius:[0,4,4,0] }
+            })).reverse(),
+            barWidth: 16,
+            label: { show: true, position: 'right', formatter: '{c}', fontSize: 11 }
+        }]
+    });
+    window.addEventListener('resize', ()=>rankChart.resize());
+
+    const sentChart = echarts.init(document.getElementById('sentiment-chart'));
+    var pctFormat = '{d}%';
+    sentChart.setOption({
+        tooltip: { trigger: 'axis' },
+        legend: { data: ['正面', '中性', '负面'], top: 0 },
+        grid: { left: 50, right: 20, bottom: 100, top: 35 },
+        xAxis: { type: 'category', data: d.movies.map(function(m){return m.片名;}), axisLabel:{fontSize:10,rotate:30,interval:0} },
+        yAxis: { type: 'value', max: 1 },
+        series: [
+            { name:'正面', type:'bar', stack:'total', data: d.movies.map(function(m){return m.正面比例;}), itemStyle:{color:'#155724'} },
+            { name:'中性', type:'bar', stack:'total', data: d.movies.map(function(m){return Math.max(0,1-m.正面比例-m.负面比例);}), itemStyle:{color:'#DAA520'} },
+            { name:'负面', type:'bar', stack:'total', data: d.movies.map(function(m){return m.负面比例;}), itemStyle:{color:'#8B0000'} },
+        ]
+    });
+    window.addEventListener('resize', ()=>sentChart.resize());
+
+    document.getElementById('movie-list').innerHTML = d.movies.map(function(m) {
+        return '<div class="col-6 col-md-4 col-lg-3 col-xl-2">'
+            + '<a href="/movie/'+m.movie_id+'" class="movie-card">'
+            + '<div class="poster-wrap"><img src="'+posterUrl(m.海报)+'" alt="'+m.片名+'" loading="lazy"></div>'
+            + '<div class="card-body">'
+            + '<div class="card-title">'+m.片名+'</div>'
+            + '<div class="card-meta"><span class="score">'+m.豆瓣评分+'</span> '+labelBadge(m.label, m.label_type)+'</div>'
+            + '</div></a></div>';
+    }).join('');
+}
+</script>
+{% endblock %}
