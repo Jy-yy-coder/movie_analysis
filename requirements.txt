@@ -27,10 +27,6 @@ wordcloud==1.9.4
 # Web框架
 flask==3.1.0
 
-# AI 推荐
-openai==1.50.0
-python-dotenv==1.0.1
-
 # 请求库（备用）
 requests==2.32.3
 beautifulsoup4==4.12.3

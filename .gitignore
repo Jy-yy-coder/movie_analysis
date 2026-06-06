@@ -6,9 +6,6 @@ dist/
 build/
 *.egg
 
-# API 密钥
-.env
-
 # 浏览器数据（采集用，部署不需要）
 browser_data/
 
