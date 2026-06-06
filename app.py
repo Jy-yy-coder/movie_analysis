@@ -9,14 +9,17 @@ import os
 import glob
 import re
 from collections import Counter
-from flask import Flask, render_template, jsonify, request, send_from_directory
+from flask import Flask, render_template, jsonify, request, send_from_directory, abort
+from werkzeug.utils import safe_join
 
 app = Flask(__name__)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CLEAN_DIR = os.path.join(BASE_DIR, 'data', 'cleaned')
 RAW_DIR = os.path.join(BASE_DIR, 'data', 'raw')
-POSTER_DIR = os.path.join(RAW_DIR, 'posters')
+STATIC_POSTER_DIR = os.path.join(BASE_DIR, 'static', 'posters')
+RAW_POSTER_DIR = os.path.join(RAW_DIR, 'posters')
+POSTER_DIRS = [STATIC_POSTER_DIR, RAW_POSTER_DIR]
 
 # ==================== 关键词库 ====================
 
@@ -85,6 +88,27 @@ def find_poster(name, posters):
     for k in posters:
         if name in k or k in name:
             return posters[k]
+    return None
+
+
+def iter_poster_files():
+    seen = set()
+    for poster_dir in POSTER_DIRS:
+        if not os.path.isdir(poster_dir):
+            continue
+        for filename in os.listdir(poster_dir):
+            if filename in seen:
+                continue
+            if filename.lower().endswith(('.jpg', '.jpeg', '.png', '.webp')):
+                seen.add(filename)
+                yield filename
+
+
+def find_poster_dir(filename):
+    for poster_dir in POSTER_DIRS:
+        path = safe_join(poster_dir, filename)
+        if path and os.path.isfile(path):
+            return poster_dir
     return None
 
 
@@ -219,10 +243,8 @@ def load_all_data():
 
     # 2. 海报
     data['posters'] = {}
-    if os.path.exists(POSTER_DIR):
-        for f in os.listdir(POSTER_DIR):
-            if f.endswith(('.jpg', '.png', '.webp')):
-                data['posters'][f.rsplit('.', 1)[0]] = f
+    for f in iter_poster_files():
+        data['posters'][f.rsplit('.', 1)[0]] = f
 
     # 3. 评论数据
     data['comments'] = {}
@@ -592,7 +614,10 @@ def api_compare():
 
 @app.route('/posters/<path:filename>')
 def poster(filename):
-    return send_from_directory(POSTER_DIR, filename)
+    poster_dir = find_poster_dir(filename)
+    if not poster_dir:
+        abort(404)
+    return send_from_directory(poster_dir, filename)
 
 # ==================== 口碑分析 API ====================
 
