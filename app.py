@@ -665,3 +665,5 @@ def api_analysis_data():
 if __name__ == '__main__':
     print('春节档电影观影决策平台启动中...')
     app.run(debug=False, host='0.0.0.0', port=5000)
+
+# Vercel部署触发更新
